@@ -47,3 +47,21 @@ CREATE TABLE IF NOT EXISTS specimen_applications (
   CONSTRAINT chk_specimen_sample_type CHECK (sample_type IN ('组织', '血浆')),
   CONSTRAINT chk_specimen_stage CHECK (stage IN ('I', 'II', 'III', 'IV'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sys_users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  uuid VARCHAR(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户UUID',
+  username VARCHAR(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户登录名',
+  password VARCHAR(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户登录密码',
+  header_img VARCHAR(191) COLLATE utf8mb4_unicode_ci DEFAULT 'https://api.dicebear.com/10.x/bottts/png' COMMENT '用户头像',
+  authority_id BIGINT UNSIGNED DEFAULT '888' COMMENT '用户角色ID',
+  phone VARCHAR(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户手机号',
+  email VARCHAR(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户邮箱',
+  enable BIGINT DEFAULT '1' COMMENT '用户是否被冻结 1正常 2冻结',
+  created_at DATETIME(3) DEFAULT NULL,
+  updated_at DATETIME(3) DEFAULT NULL,
+  deleted_at DATETIME(3) DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_sys_users_uuid (uuid),
+  KEY idx_sys_users_username (username)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
