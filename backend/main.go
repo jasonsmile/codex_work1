@@ -17,11 +17,16 @@ func main() {
 		log.Fatalf("connect database failed: %v", err)
 	}
 
+	enforcer, err := db.NewRBACEnforcer(database)
+	if err != nil {
+		log.Fatalf("init casbin failed: %v", err)
+	}
+
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowAllOrigins: true,
 		AllowMethods:    []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:    []string{"Origin", "Content-Type", "Accept"},
+		AllowHeaders:    []string{"Origin", "Content-Type", "Accept", "Authorization"},
 	}))
 
 	drugHandler := handlers.NewDrugHandler(database)
@@ -30,12 +35,19 @@ func main() {
 
 	api := router.Group("/api")
 	{
-		api.POST("/drugs/add", drugHandler.CreateDrug)
-		api.GET("/drugs/get", drugHandler.ListDrugs)
-		api.POST("/specimens/add", specimenHandler.CreateApplication)
-		api.GET("/specimens/get", specimenHandler.ListApplications)
-		api.POST("/users/add", userHandler.CreateUser)
 		api.POST("/users/login", userHandler.Login)
+
+		protected := api.Group("")
+		protected.Use(handlers.RBACMiddleware(enforcer))
+		{
+			protected.POST("/drugs/add", drugHandler.CreateDrug)
+			protected.GET("/drugs/get", drugHandler.ListDrugs)
+			protected.POST("/specimens/add", specimenHandler.CreateApplication)
+			protected.GET("/specimens/get", specimenHandler.ListApplications)
+			protected.POST("/users/add", userHandler.CreateUser)
+			protected.GET("/users/get", userHandler.ListUsers)
+			protected.POST("/users/delete", userHandler.DeleteUser)
+		}
 	}
 
 	port := os.Getenv("SERVER_PORT")

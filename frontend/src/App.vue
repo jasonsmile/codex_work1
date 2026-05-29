@@ -54,18 +54,45 @@
           <img class="sidebar-logo" :src="techLogo" alt="信息管理平台标识" />
           <span>信息管理平台</span>
         </div>
-        <el-menu :default-active="activeMenu" class="side-menu" @select="handleMenuSelect">
-          <el-menu-item index="drugs">药品信息管理</el-menu-item>
-          <el-menu-item index="specimens">标本留存信息</el-menu-item>
-          <el-menu-item index="about">关于我们</el-menu-item>
+        <el-menu
+          ref="sideMenuRef"
+          :default-active="activeMenu"
+          :default-openeds="defaultOpenedMenus"
+          class="side-menu"
+          @open="handleMenuOpen"
+          @close="handleMenuClose"
+          @select="handleMenuSelect"
+        >
+          <el-menu-item v-if="canViewMenu('drugs')" index="drugs">
+            <el-icon><FirstAidKit /></el-icon>
+            <span>药品信息管理</span>
+          </el-menu-item>
+          <el-menu-item v-if="canViewMenu('specimens')" index="specimens">
+            <el-icon><Document /></el-icon>
+            <span>标本留存信息</span>
+          </el-menu-item>
+          <el-menu-item v-if="canViewMenu('about')" index="about">
+            <el-icon><InfoFilled /></el-icon>
+            <span>关于我们</span>
+          </el-menu-item>
+          <el-sub-menu v-if="canViewMenu('users')" index="superAdmin">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              <span>超级管理员</span>
+            </template>
+            <el-menu-item index="users">
+              <el-icon><UserFilled /></el-icon>
+              <span>用户管理</span>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </aside>
 
       <section class="main-shell">
         <header class="top-bar">
           <div class="top-brand">
-            <span class="breadcrumb-root">首页</span>
-            <span class="breadcrumb-separator">/</span>
+            <span v-if="breadcrumbParent" class="breadcrumb-root">{{ breadcrumbParent }}</span>
+            <span v-if="breadcrumbParent" class="breadcrumb-separator">/</span>
             <span class="breadcrumb-current">{{ pageTitle }}</span>
           </div>
           <div class="top-user">
@@ -92,31 +119,46 @@
         <section class="content">
 
         <template v-if="activeMenu === 'drugs'">
-          <section class="panel">
-            <h2>新增药品</h2>
+          <section v-if="canCreateDrugs" class="panel action-panel">
+            <el-button type="primary" @click="drugDrawerVisible = true">
+              <el-icon><Plus /></el-icon>
+              <span>新增药品</span>
+            </el-button>
+          </section>
+
+          <el-drawer v-model="drugDrawerVisible" direction="rtl" size="520px" :show-close="false">
+            <template #header>
+              <div class="drawer-header">
+                <h2>新增药品</h2>
+                <div class="drawer-actions">
+                  <el-button @click="cancelDrugDrawer">取消</el-button>
+                  <el-button type="primary" :loading="saving" @click="submitForm">确定</el-button>
+                </div>
+              </div>
+            </template>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="96px" class="drug-form">
               <el-row :gutter="18">
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="药品名称" prop="name">
                     <el-input v-model.trim="form.name" placeholder="请输入药品名称" clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="生产厂家" prop="manufacturer">
                     <el-input v-model.trim="form.manufacturer" placeholder="请输入生产厂家" clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="批准文号" prop="approvalNumber">
                     <el-input v-model.trim="form.approvalNumber" placeholder="请输入批准文号" clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="规格" prop="specification">
                     <el-input v-model.trim="form.specification" placeholder="例如 0.25g*24粒" clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="价格" prop="price">
                     <el-input-number
                       v-model="form.price"
@@ -128,7 +170,7 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="库存数量" prop="stock">
                     <el-input-number
                       v-model="form.stock"
@@ -141,13 +183,8 @@
                   </el-form-item>
                 </el-col>
               </el-row>
-
-              <div class="form-actions">
-                <el-button type="primary" :loading="saving" @click="submitForm">提交</el-button>
-                <el-button @click="resetForm">清空</el-button>
-              </div>
             </el-form>
-          </section>
+          </el-drawer>
 
           <section class="panel">
             <div class="table-toolbar">
@@ -181,8 +218,23 @@
         </template>
 
         <template v-else-if="activeMenu === 'specimens'">
-          <section class="panel">
-            <h2>添加申请单</h2>
+          <section v-if="canCreateSpecimens" class="panel action-panel">
+            <el-button type="primary" @click="specimenDrawerVisible = true">
+              <el-icon><Plus /></el-icon>
+              <span>添加申请单</span>
+            </el-button>
+          </section>
+
+          <el-drawer v-model="specimenDrawerVisible" direction="rtl" size="640px" :show-close="false">
+            <template #header>
+              <div class="drawer-header">
+                <h2>添加申请单</h2>
+                <div class="drawer-actions">
+                  <el-button @click="cancelSpecimenDrawer">取消</el-button>
+                  <el-button type="primary" :loading="specimenSaving" @click="submitSpecimenForm">确定</el-button>
+                </div>
+              </div>
+            </template>
             <el-form
               ref="specimenFormRef"
               :model="specimenForm"
@@ -191,12 +243,12 @@
               class="specimen-form"
             >
               <el-row :gutter="18">
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="姓名" prop="name">
                     <el-input v-model.trim="specimenForm.name" placeholder="请输入姓名" clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="性别" prop="gender">
                     <el-select v-model="specimenForm.gender" placeholder="请选择性别" class="full-input">
                       <el-option label="男" value="男" />
@@ -204,7 +256,7 @@
                     </el-select>
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="年龄" prop="age">
                     <el-input-number
                       v-model="specimenForm.age"
@@ -216,12 +268,12 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="ID号" prop="idNumber">
                     <el-input v-model.trim="specimenForm.idNumber" placeholder="请输入ID号" clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="送检标本类型" prop="sampleType">
                     <el-select v-model="specimenForm.sampleType" placeholder="请选择标本类型" class="full-input">
                       <el-option label="组织" value="组织" />
@@ -229,7 +281,7 @@
                     </el-select>
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="PD-L1表达" prop="pdl1Expression">
                     <div class="percent-input">
                       <el-input-number
@@ -258,12 +310,12 @@
                     </el-radio-group>
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="送检医师" prop="doctor">
                     <el-input v-model.trim="specimenForm.doctor" placeholder="请输入送检医师" clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="送检日期" prop="inspectionDate">
                     <el-date-picker
                       v-model="specimenForm.inspectionDate"
@@ -274,7 +326,7 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="8">
+                <el-col :span="24">
                   <el-form-item label="驱动基因突变">
                     <el-input
                       v-model.trim="specimenForm.driverGeneMutation"
@@ -283,7 +335,7 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="末次治疗">
                     <el-input
                       v-model.trim="specimenForm.lastTreatment"
@@ -293,7 +345,7 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :xs="24" :md="12">
+                <el-col :span="24">
                   <el-form-item label="后续治疗方案">
                     <el-input
                       v-model.trim="specimenForm.followUpTreatment"
@@ -304,13 +356,8 @@
                   </el-form-item>
                 </el-col>
               </el-row>
-
-              <div class="form-actions specimen-actions">
-                <el-button type="primary" :loading="specimenSaving" @click="submitSpecimenForm">提交</el-button>
-                <el-button @click="resetSpecimenForm">清空</el-button>
-              </div>
             </el-form>
-          </section>
+          </el-drawer>
 
           <section class="panel">
             <div class="table-toolbar">
@@ -352,6 +399,104 @@
             <div class="contact-line">联系方式：tel=7934</div>
           </section>
         </template>
+
+        <template v-else-if="activeMenu === 'users'">
+          <section class="panel">
+            <div class="table-toolbar">
+              <h2>用户管理</h2>
+              <el-button type="primary" @click="userDrawerVisible = true">
+                <el-icon><Plus /></el-icon>
+                <span>新增用户</span>
+              </el-button>
+            </div>
+          </section>
+
+          <el-drawer v-model="userDrawerVisible" direction="rtl" size="520px" :show-close="false">
+            <template #header>
+              <div class="drawer-header">
+                <h2>新增用户</h2>
+                <div class="drawer-actions">
+                  <el-button @click="cancelUserDrawer">取消</el-button>
+                  <el-button type="primary" :loading="userSaving" @click="submitUserForm">确定</el-button>
+                </div>
+              </div>
+            </template>
+            <el-form
+              ref="userFormRef"
+              :model="userForm"
+              :rules="userRules"
+              label-width="96px"
+              class="user-form"
+            >
+              <el-row :gutter="18">
+                <el-col :span="24">
+                  <el-form-item label="用户名" prop="username">
+                    <el-input v-model.trim="userForm.username" placeholder="请输入用户名" clearable />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="密码" prop="password">
+                    <el-input v-model.trim="userForm.password" type="password" placeholder="请输入密码" show-password />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="角色" prop="authorityId">
+                    <el-select v-model="userForm.authorityId" class="full-input" placeholder="请选择角色">
+                      <el-option label="管理员" :value="888" />
+                      <el-option label="标本管理员" :value="777" />
+                      <el-option label="只读用户" :value="999" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="手机号">
+                    <el-input v-model.trim="userForm.phone" placeholder="请输入手机号" clearable />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="邮箱">
+                    <el-input v-model.trim="userForm.email" placeholder="请输入邮箱" clearable />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="状态" prop="enable">
+                    <el-select v-model="userForm.enable" class="full-input" placeholder="请选择状态">
+                      <el-option label="正常" :value="1" />
+                      <el-option label="冻结" :value="2" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+            </el-form>
+          </el-drawer>
+
+          <section class="panel">
+            <el-table :data="users" v-loading="userLoading" border stripe empty-text="暂无用户数据">
+              <el-table-column prop="username" label="用户名" min-width="140" />
+              <el-table-column prop="authorityId" label="角色" min-width="130">
+                <template #default="{ row }">{{ roleLabel(row.authorityId) }}</template>
+              </el-table-column>
+              <el-table-column prop="phone" label="手机号" min-width="140" />
+              <el-table-column prop="email" label="邮箱" min-width="180" />
+              <el-table-column prop="enable" label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="row.enable === 1 ? 'success' : 'danger'">
+                    {{ row.enable === 1 ? '正常' : '冻结' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="创建时间" min-width="180">
+                <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="danger" link @click="deleteUser(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </template>
       </section>
       </section>
     </section>
@@ -361,12 +506,21 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
-import { SwitchButton } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Document, FirstAidKit, InfoFilled, Plus, Setting, SwitchButton, UserFilled } from '@element-plus/icons-vue'
 import techLogo from './assets/tech-logo.png'
 
 const API_BASE = '/api'
 const USER_STORAGE_KEY = 'medical-info-current-user'
+
+axios.interceptors.request.use((config) => {
+  const user = readStoredUser()
+  if (user?.token) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${user.token}`
+  }
+  return config
+})
 
 const createInitialForm = () => ({
   name: '',
@@ -393,23 +547,48 @@ const createInitialSpecimenForm = () => ({
   inspectionDate: ''
 })
 
+const createInitialUserForm = () => ({
+  username: '',
+  password: '',
+  authorityId: 999,
+  phone: '',
+  email: '',
+  enable: 1
+})
+
 const loginFormRef = ref()
 const formRef = ref()
 const specimenFormRef = ref()
+const userFormRef = ref()
+const sideMenuRef = ref()
 const loginForm = reactive({ username: '', password: '' })
 const form = reactive(createInitialForm())
 const specimenForm = reactive(createInitialSpecimenForm())
+const userForm = reactive(createInitialUserForm())
 const drugs = ref([])
 const specimenApplications = ref([])
+const users = ref([])
 const keyword = ref('')
 const loading = ref(false)
 const saving = ref(false)
 const specimenLoading = ref(false)
 const specimenSaving = ref(false)
 const loginLoading = ref(false)
+const userLoading = ref(false)
+const userSaving = ref(false)
+const drugDrawerVisible = ref(false)
+const specimenDrawerVisible = ref(false)
+const userDrawerVisible = ref(false)
 const currentView = ref('home')
 const activeMenu = ref('drugs')
 const currentUser = ref(readStoredUser())
+const defaultOpenedMenus = ref([])
+
+const roleMenus = {
+  888: ['drugs', 'specimens', 'about', 'users'],
+  777: ['specimens', 'about'],
+  999: ['drugs', 'specimens', 'about']
+}
 
 const pathologyTypes = ['腺癌', '鳞癌', '腺鳞癌', '大细胞神经内分泌癌', '小细胞肺癌', '其他']
 const stages = ['I', 'II', 'III', 'IV']
@@ -421,19 +600,43 @@ const pageTitle = computed(() => {
   if (activeMenu.value === 'about') {
     return '关于我们'
   }
+  if (activeMenu.value === 'users') {
+    return '用户管理'
+  }
   return '药品信息管理'
+})
+
+const breadcrumbParent = computed(() => {
+  if (activeMenu.value === 'users') {
+    return '超级管理员'
+  }
+  return ''
 })
 const menuRoutes = {
   drugs: '/drugs',
   specimens: '/specimens',
-  about: '/about'
+  about: '/about',
+  users: '/users'
 }
 
 const routeMenus = {
   '/drugs': 'drugs',
   '/specimens': 'specimens',
-  '/about': 'about'
+  '/about': 'about',
+  '/users': 'users'
 }
+
+const allowedMenus = computed(() => {
+  const authorityId = Number(currentUser.value?.authorityId)
+  return roleMenus[authorityId] || []
+})
+
+const canCreateDrugs = computed(() => Number(currentUser.value?.authorityId) === 888)
+const canCreateSpecimens = computed(() => [777, 888].includes(Number(currentUser.value?.authorityId)))
+
+const canViewMenu = (menu) => allowedMenus.value.includes(menu)
+
+const firstAllowedMenu = () => allowedMenus.value[0] || 'drugs'
 
 const loginRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -465,13 +668,25 @@ const specimenRules = {
   inspectionDate: [{ required: true, message: '请选择送检日期', trigger: 'change' }]
 }
 
+const userRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  authorityId: [{ required: true, message: '请选择角色', trigger: 'change' }],
+  enable: [{ required: true, message: '请选择状态', trigger: 'change' }]
+}
+
 function readStoredUser() {
   const raw = window.localStorage.getItem(USER_STORAGE_KEY)
   if (!raw) {
     return null
   }
   try {
-    return JSON.parse(raw)
+    const user = JSON.parse(raw)
+    if (!user?.token) {
+      window.localStorage.removeItem(USER_STORAGE_KEY)
+      return null
+    }
+    return user
   } catch {
     window.localStorage.removeItem(USER_STORAGE_KEY)
     return null
@@ -507,6 +722,18 @@ const fetchSpecimens = async () => {
   }
 }
 
+const fetchUsers = async () => {
+  userLoading.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE}/users/get`)
+    users.value = data.data || []
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '查询用户失败'))
+  } finally {
+    userLoading.value = false
+  }
+}
+
 const submitLogin = async () => {
   const valid = await loginFormRef.value.validate().catch(() => false)
   if (!valid) {
@@ -539,19 +766,31 @@ const openManagement = async () => {
   }
 
   currentView.value = 'management'
-  activeMenu.value = 'drugs'
-  updateRoute('/drugs')
-  await fetchDrugs()
+  activeMenu.value = firstAllowedMenu()
+  updateRoute(menuRoutes[activeMenu.value])
+  await fetchActiveMenuData()
 }
 
 const handleMenuSelect = async (index) => {
-  activeMenu.value = index
-  updateRoute(menuRoutes[index])
-  if (index === 'drugs') {
-    await fetchDrugs()
+  if (!canViewMenu(index)) {
+    ElMessage.error('无权访问该菜单')
+    return
   }
-  if (index === 'specimens') {
-    await fetchSpecimens()
+  activeMenu.value = index
+  syncSuperAdminMenu(index === 'users')
+  updateRoute(menuRoutes[index])
+  await fetchActiveMenuData()
+}
+
+const handleMenuOpen = (index) => {
+  if (index === 'superAdmin') {
+    defaultOpenedMenus.value = ['superAdmin']
+  }
+}
+
+const handleMenuClose = (index) => {
+  if (index === 'superAdmin') {
+    defaultOpenedMenus.value = []
   }
 }
 
@@ -567,13 +806,40 @@ const applyRoute = async () => {
     return
   }
 
+  if (!canViewMenu(matchedMenu)) {
+    const fallbackMenu = firstAllowedMenu()
+    currentView.value = 'management'
+    activeMenu.value = fallbackMenu
+    syncSuperAdminMenu(fallbackMenu === 'users')
+    updateRoute(menuRoutes[fallbackMenu])
+    await fetchActiveMenuData()
+    return
+  }
+
   currentView.value = 'management'
   activeMenu.value = matchedMenu
-  if (matchedMenu === 'drugs') {
+  syncSuperAdminMenu(matchedMenu === 'users')
+  await fetchActiveMenuData()
+}
+
+const syncSuperAdminMenu = (shouldOpen) => {
+  defaultOpenedMenus.value = shouldOpen ? ['superAdmin'] : []
+  if (shouldOpen) {
+    sideMenuRef.value?.open?.('superAdmin')
+  } else {
+    sideMenuRef.value?.close?.('superAdmin')
+  }
+}
+
+const fetchActiveMenuData = async () => {
+  if (activeMenu.value === 'drugs') {
     await fetchDrugs()
   }
-  if (matchedMenu === 'specimens') {
+  if (activeMenu.value === 'specimens') {
     await fetchSpecimens()
+  }
+  if (activeMenu.value === 'users') {
+    await fetchUsers()
   }
 }
 
@@ -616,6 +882,7 @@ const submitForm = async () => {
     })
     ElMessage.success('保存成功')
     resetForm()
+    drugDrawerVisible.value = false
     await fetchDrugs()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '保存失败'))
@@ -639,6 +906,7 @@ const submitSpecimenForm = async () => {
     })
     ElMessage.success('保存成功')
     resetSpecimenForm()
+    specimenDrawerVisible.value = false
     await fetchSpecimens()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '保存申请单失败'))
@@ -647,14 +915,91 @@ const submitSpecimenForm = async () => {
   }
 }
 
+const submitUserForm = async () => {
+  const valid = await userFormRef.value.validate().catch(() => false)
+  if (!valid) {
+    return
+  }
+
+  userSaving.value = true
+  try {
+    await axios.post(`${API_BASE}/users/add`, {
+      username: userForm.username,
+      password: userForm.password,
+      authorityId: Number(userForm.authorityId),
+      phone: userForm.phone,
+      email: userForm.email,
+      enable: Number(userForm.enable)
+    })
+    ElMessage.success('创建用户成功')
+    resetUserForm()
+    userDrawerVisible.value = false
+    await fetchUsers()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '创建用户失败'))
+  } finally {
+    userSaving.value = false
+  }
+}
+
+const deleteUser = async (row) => {
+  if (row.id === currentUser.value?.id) {
+    ElMessage.error('不能删除当前登录用户')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(`确认删除用户 ${row.username} 吗？`, '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await axios.post(`${API_BASE}/users/delete`, { id: row.id })
+    ElMessage.success('删除成功')
+    await fetchUsers()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return
+    }
+    ElMessage.error(getErrorMessage(error, '删除用户失败'))
+  }
+}
+
+const roleLabel = (authorityId) =>
+  ({
+    888: '管理员',
+    777: '标本管理员',
+    999: '只读用户'
+  })[Number(authorityId)] || '未知角色'
+
 const resetForm = () => {
   Object.assign(form, createInitialForm())
   formRef.value?.clearValidate()
 }
 
+const cancelDrugDrawer = () => {
+  resetForm()
+  drugDrawerVisible.value = false
+}
+
 const resetSpecimenForm = () => {
   Object.assign(specimenForm, createInitialSpecimenForm())
   specimenFormRef.value?.clearValidate()
+}
+
+const cancelSpecimenDrawer = () => {
+  resetSpecimenForm()
+  specimenDrawerVisible.value = false
+}
+
+const resetUserForm = () => {
+  Object.assign(userForm, createInitialUserForm())
+  userFormRef.value?.clearValidate()
+}
+
+const cancelUserDrawer = () => {
+  resetUserForm()
+  userDrawerVisible.value = false
 }
 
 const formatTime = (value) => {

@@ -65,3 +65,18 @@ CREATE TABLE IF NOT EXISTS sys_users (
   KEY idx_sys_users_uuid (uuid),
   KEY idx_sys_users_username (username)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS casbin_rules (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  ptype VARCHAR(16) NOT NULL,
+  v0 VARCHAR(191) DEFAULT '',
+  v1 VARCHAR(191) DEFAULT '',
+  v2 VARCHAR(191) DEFAULT '',
+  v3 VARCHAR(191) DEFAULT '',
+  v4 VARCHAR(191) DEFAULT '',
+  v5 VARCHAR(191) DEFAULT '',
+  PRIMARY KEY (id),
+  INDEX idx_casbin_rules_ptype (ptype),
+  INDEX idx_casbin_rules_v0 (v0),
+  INDEX idx_casbin_rules_v1 (v1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

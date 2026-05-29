@@ -131,5 +131,53 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	success(c, http.StatusOK, "登录成功", models.NewSysUserResponse(user))
+	token, err := createToken(user.UUID, user.Username, user.AuthorityID)
+	if err != nil {
+		serverError(c, "生成登录凭证失败", err)
+		return
+	}
+
+	response := models.NewSysUserResponse(user)
+	response.Token = token
+	success(c, http.StatusOK, "登录成功", response)
+}
+
+func (h *UserHandler) ListUsers(c *gin.Context) {
+	var users []models.SysUser
+	if err := h.db.Order("created_at DESC").Find(&users).Error; err != nil {
+		serverError(c, "查询用户失败", err)
+		return
+	}
+
+	responses := make([]models.SysUserResponse, 0, len(users))
+	for _, user := range users {
+		responses = append(responses, models.NewSysUserResponse(user))
+	}
+
+	success(c, http.StatusOK, "查询成功", responses)
+}
+
+func (h *UserHandler) DeleteUser(c *gin.Context) {
+	var req models.DeleteSysUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		badRequest(c, "请求参数不正确", err)
+		return
+	}
+
+	if req.ID == 0 {
+		badRequest(c, "用户ID不能为空", nil)
+		return
+	}
+
+	result := h.db.Delete(&models.SysUser{}, req.ID)
+	if result.Error != nil {
+		serverError(c, "删除用户失败", result.Error)
+		return
+	}
+	if result.RowsAffected == 0 {
+		fail(c, http.StatusNotFound, 404, "用户不存在", nil)
+		return
+	}
+
+	success(c, http.StatusOK, "删除成功", nil)
 }

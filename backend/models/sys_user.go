@@ -36,10 +36,15 @@ type LoginSysUserRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type DeleteSysUserRequest struct {
+	ID uint64 `json:"id" binding:"required"`
+}
+
 type SysUserResponse struct {
 	ID          uint64     `json:"id"`
 	UUID        string     `json:"uuid"`
 	Username    string     `json:"username"`
+	Token       string     `json:"token,omitempty"`
 	HeaderImg   string     `json:"headerImg"`
 	AuthorityID uint64     `json:"authorityId"`
 	Phone       string     `json:"phone"`

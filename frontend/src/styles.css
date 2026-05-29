@@ -123,21 +123,72 @@ body {
   padding: 12px 10px;
 }
 
-.side-menu .el-menu-item {
+.side-menu.el-menu,
+.side-menu .el-menu,
+.side-menu .el-menu--inline {
+  background: #191a23;
+}
+
+.side-menu .el-sub-menu,
+.side-menu .el-collapse-transition-leave-active,
+.side-menu .el-collapse-transition-enter-active {
+  background: #191a23;
+}
+
+.side-menu .el-menu-item,
+.side-menu .el-sub-menu__title {
   height: 46px;
   margin: 4px 0;
   border-radius: 6px;
   color: #b7becd;
 }
 
-.side-menu .el-menu-item:hover {
+.side-menu .el-menu-item:hover,
+.side-menu .el-sub-menu__title:hover {
   color: #ffffff;
   background: rgba(64, 158, 255, 0.18);
 }
 
-.side-menu .el-menu-item.is-active {
+.side-menu .el-menu-item.is-active,
+.side-menu .el-sub-menu.is-active > .el-sub-menu__title {
   color: #ffffff;
+  background: transparent;
+}
+
+.side-menu > .el-menu-item.is-active {
   background: #409eff;
+}
+
+.side-menu .el-sub-menu .el-menu-item.is-active {
+  color: #ffffff;
+  background: #1f2937;
+  box-shadow: none;
+}
+
+.side-menu .el-sub-menu.is-active > .el-sub-menu__title {
+  background: transparent;
+}
+
+.side-menu .el-menu-item,
+.side-menu .el-sub-menu__title {
+  outline: none;
+}
+
+.side-menu .el-menu-item:focus,
+.side-menu .el-sub-menu__title:focus {
+  color: #ffffff;
+  background: #1f2937;
+  outline: none;
+  box-shadow: none;
+}
+
+.side-menu .el-sub-menu__icon-arrow {
+  color: inherit;
+}
+
+.side-menu .el-icon {
+  margin-right: 10px;
+  font-size: 17px;
 }
 
 .content {
@@ -273,6 +324,41 @@ body {
   margin: 0 0 18px;
   font-size: 18px;
   font-weight: 650;
+}
+
+.action-panel {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  color: #102033;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.drawer-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.el-drawer__header {
+  margin-bottom: 0;
+  padding: 18px 22px;
+  border-bottom: 1px solid #e7ebf2;
+}
+
+.el-drawer__body {
+  padding: 22px;
 }
 
 .drug-form {
