@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -50,7 +51,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		fail(c, http.StatusConflict, CodeConflict, "用户登录名已存在", nil)
 		return
 	}
-	if err != gorm.ErrRecordNotFound {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		serverError(c, "检查用户登录名失败", err)
 		return
 	}
@@ -90,4 +91,45 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 
 	success(c, http.StatusCreated, "创建用户成功", models.NewSysUserResponse(user))
+}
+
+func (h *UserHandler) Login(c *gin.Context) {
+	var req models.LoginSysUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		badRequest(c, "请求参数不正确", err)
+		return
+	}
+
+	req.Username = strings.TrimSpace(req.Username)
+	req.Password = strings.TrimSpace(req.Password)
+
+	if req.Username == "" {
+		badRequest(c, "用户登录名不能为空", nil)
+		return
+	}
+	if req.Password == "" {
+		badRequest(c, "用户登录密码不能为空", nil)
+		return
+	}
+
+	var user models.SysUser
+	err := h.db.Where("username = ?", req.Username).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		fail(c, http.StatusUnauthorized, 401, "用户名或密码错误", nil)
+		return
+	}
+	if err != nil {
+		serverError(c, "查询用户失败", err)
+		return
+	}
+	if user.Enable != 1 {
+		fail(c, http.StatusForbidden, 403, "用户已被冻结", nil)
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		fail(c, http.StatusUnauthorized, 401, "用户名或密码错误", nil)
+		return
+	}
+
+	success(c, http.StatusOK, "登录成功", models.NewSysUserResponse(user))
 }

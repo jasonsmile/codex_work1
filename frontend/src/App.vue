@@ -1,19 +1,59 @@
 <template>
-  <main class="page" :class="{ 'page--home': currentView === 'home' }">
-    <section v-if="currentView === 'home'" class="home-view">
+  <main class="page" :class="{ 'page--home': currentView === 'home', 'page--workspace': currentView !== 'home' }">
+    <section v-if="currentView === 'home'" class="home-view login-view">
       <img class="brand-logo" :src="techLogo" alt="信息管理平台标识" />
       <h1>信息管理平台</h1>
       <p class="tagline">A simple platform for information management.</p>
-      <el-button type="primary" size="large" @click="openManagement">进入信息管理</el-button>
+
+      <el-form
+        ref="loginFormRef"
+        :model="loginForm"
+        :rules="loginRules"
+        label-position="top"
+        class="login-form"
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input
+            v-model.trim="loginForm.username"
+            placeholder="请输入用户名"
+            size="large"
+            clearable
+            @keyup.enter="submitLogin"
+          />
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input
+            v-model.trim="loginForm.password"
+            type="password"
+            placeholder="请输入密码"
+            size="large"
+            show-password
+            @keyup.enter="submitLogin"
+          />
+        </el-form-item>
+        <el-button
+          type="primary"
+          size="large"
+          class="login-button"
+          :loading="loginLoading"
+          @click="submitLogin"
+        >
+          登录
+        </el-button>
+      </el-form>
+
       <footer class="home-footer">
         <span>Powered by Codex</span>
         <span>Copyright 信息中心团队</span>
       </footer>
     </section>
 
-    <section v-else class="workspace">
+    <section v-else class="app-layout">
       <aside class="sidebar">
-        <div class="sidebar-title">信息管理平台</div>
+        <div class="sidebar-brand">
+          <img class="sidebar-logo" :src="techLogo" alt="信息管理平台标识" />
+          <span>信息管理平台</span>
+        </div>
         <el-menu :default-active="activeMenu" class="side-menu" @select="handleMenuSelect">
           <el-menu-item index="drugs">药品信息管理</el-menu-item>
           <el-menu-item index="specimens">标本留存信息</el-menu-item>
@@ -21,24 +61,40 @@
         </el-menu>
       </aside>
 
-      <section class="content">
-        <header class="page-header">
-          <div>
-            <h1>{{ pageTitle }}</h1>
-            <p>{{ pageSubtitle }}</p>
+      <section class="main-shell">
+        <header class="top-bar">
+          <div class="top-brand">
+            <span class="breadcrumb-root">首页</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-current">{{ pageTitle }}</span>
+          </div>
+          <div class="top-user">
+            <el-dropdown class="user-box" trigger="click" @command="handleUserCommand">
+              <button class="user-trigger" type="button">
+                <el-avatar :size="36" :src="currentUser?.headerImg">
+                  {{ currentUser?.username?.slice(0, 1)?.toUpperCase() }}
+                </el-avatar>
+                <span class="user-name">{{ currentUser?.username }}</span>
+                <span class="user-arrow" aria-hidden="true"></span>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="logout">
+                    <el-icon class="dropdown-icon"><SwitchButton /></el-icon>
+                    <span>退出登录</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
         </header>
+
+        <section class="content">
 
         <template v-if="activeMenu === 'drugs'">
           <section class="panel">
             <h2>新增药品</h2>
-            <el-form
-              ref="formRef"
-              :model="form"
-              :rules="rules"
-              label-width="96px"
-              class="drug-form"
-            >
+            <el-form ref="formRef" :model="form" :rules="rules" label-width="96px" class="drug-form">
               <el-row :gutter="18">
                 <el-col :xs="24" :md="12">
                   <el-form-item label="药品名称" prop="name">
@@ -57,7 +113,7 @@
                 </el-col>
                 <el-col :xs="24" :md="12">
                   <el-form-item label="规格" prop="specification">
-                    <el-input v-model.trim="form.specification" placeholder="例如 0.25g*24片" clearable />
+                    <el-input v-model.trim="form.specification" placeholder="例如 0.25g*24粒" clearable />
                   </el-form-item>
                 </el-col>
                 <el-col :xs="24" :md="12">
@@ -114,7 +170,7 @@
               <el-table-column prop="approvalNumber" label="批准文号" min-width="150" />
               <el-table-column prop="specification" label="规格" min-width="120" />
               <el-table-column prop="price" label="价格" width="110">
-                <template #default="{ row }">￥{{ Number(row.price).toFixed(2) }}</template>
+                <template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template>
               </el-table-column>
               <el-table-column prop="stock" label="库存数量" width="110" />
               <el-table-column prop="createdAt" label="录入时间" min-width="180">
@@ -297,6 +353,7 @@
           </section>
         </template>
       </section>
+      </section>
     </section>
   </main>
 </template>
@@ -305,9 +362,11 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { SwitchButton } from '@element-plus/icons-vue'
 import techLogo from './assets/tech-logo.png'
 
 const API_BASE = '/api'
+const USER_STORAGE_KEY = 'medical-info-current-user'
 
 const createInitialForm = () => ({
   name: '',
@@ -334,8 +393,10 @@ const createInitialSpecimenForm = () => ({
   inspectionDate: ''
 })
 
+const loginFormRef = ref()
 const formRef = ref()
 const specimenFormRef = ref()
+const loginForm = reactive({ username: '', password: '' })
 const form = reactive(createInitialForm())
 const specimenForm = reactive(createInitialSpecimenForm())
 const drugs = ref([])
@@ -345,8 +406,10 @@ const loading = ref(false)
 const saving = ref(false)
 const specimenLoading = ref(false)
 const specimenSaving = ref(false)
+const loginLoading = ref(false)
 const currentView = ref('home')
 const activeMenu = ref('drugs')
+const currentUser = ref(readStoredUser())
 
 const pathologyTypes = ['腺癌', '鳞癌', '腺鳞癌', '大细胞神经内分泌癌', '小细胞肺癌', '其他']
 const stages = ['I', 'II', 'III', 'IV']
@@ -360,14 +423,6 @@ const pageTitle = computed(() => {
   }
   return '药品信息管理'
 })
-const pageSubtitle = computed(() =>
-  ({
-    specimens: '录入和查看标本留存申请单信息',
-    about: '平台介绍和联系方式',
-    drugs: '录入、查询和管理药品基础库存信息'
-  })[activeMenu.value]
-)
-
 const menuRoutes = {
   drugs: '/drugs',
   specimens: '/specimens',
@@ -378,6 +433,11 @@ const routeMenus = {
   '/drugs': 'drugs',
   '/specimens': 'specimens',
   '/about': 'about'
+}
+
+const loginRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
 const rules = {
@@ -405,6 +465,22 @@ const specimenRules = {
   inspectionDate: [{ required: true, message: '请选择送检日期', trigger: 'change' }]
 }
 
+function readStoredUser() {
+  const raw = window.localStorage.getItem(USER_STORAGE_KEY)
+  if (!raw) {
+    return null
+  }
+  try {
+    return JSON.parse(raw)
+  } catch {
+    window.localStorage.removeItem(USER_STORAGE_KEY)
+    return null
+  }
+}
+
+const getErrorMessage = (error, fallback) =>
+  error.response?.data?.errorMessage || error.response?.data?.message || fallback
+
 const fetchDrugs = async () => {
   loading.value = true
   try {
@@ -413,7 +489,7 @@ const fetchDrugs = async () => {
     })
     drugs.value = data.data || []
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '查询失败')
+    ElMessage.error(getErrorMessage(error, '查询失败'))
   } finally {
     loading.value = false
   }
@@ -425,13 +501,43 @@ const fetchSpecimens = async () => {
     const { data } = await axios.get(`${API_BASE}/specimens/get`)
     specimenApplications.value = data.data || []
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '查询申请单失败')
+    ElMessage.error(getErrorMessage(error, '查询申请单失败'))
   } finally {
     specimenLoading.value = false
   }
 }
 
+const submitLogin = async () => {
+  const valid = await loginFormRef.value.validate().catch(() => false)
+  if (!valid) {
+    return
+  }
+
+  loginLoading.value = true
+  try {
+    const { data } = await axios.post(`${API_BASE}/users/login`, {
+      username: loginForm.username,
+      password: loginForm.password
+    })
+    currentUser.value = data.data
+    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.data))
+    loginForm.password = ''
+    ElMessage.success('登录成功')
+    await openManagement()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '登录失败'))
+  } finally {
+    loginLoading.value = false
+  }
+}
+
 const openManagement = async () => {
+  if (!currentUser.value) {
+    currentView.value = 'home'
+    updateRoute('/')
+    return
+  }
+
   currentView.value = 'management'
   activeMenu.value = 'drugs'
   updateRoute('/drugs')
@@ -452,9 +558,12 @@ const handleMenuSelect = async (index) => {
 const applyRoute = async () => {
   const path = window.location.pathname
   const matchedMenu = routeMenus[path]
-  if (!matchedMenu) {
+  if (!matchedMenu || !currentUser.value) {
     currentView.value = 'home'
     activeMenu.value = 'drugs'
+    if (path !== '/') {
+      updateRoute('/')
+    }
     return
   }
 
@@ -473,6 +582,20 @@ const updateRoute = (path) => {
     return
   }
   window.history.pushState({}, '', path)
+}
+
+const logout = () => {
+  currentUser.value = null
+  window.localStorage.removeItem(USER_STORAGE_KEY)
+  currentView.value = 'home'
+  activeMenu.value = 'drugs'
+  updateRoute('/')
+}
+
+const handleUserCommand = (command) => {
+  if (command === 'logout') {
+    logout()
+  }
 }
 
 const submitForm = async () => {
@@ -495,7 +618,7 @@ const submitForm = async () => {
     resetForm()
     await fetchDrugs()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    ElMessage.error(getErrorMessage(error, '保存失败'))
   } finally {
     saving.value = false
   }
@@ -518,7 +641,7 @@ const submitSpecimenForm = async () => {
     resetSpecimenForm()
     await fetchSpecimens()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '保存申请单失败')
+    ElMessage.error(getErrorMessage(error, '保存申请单失败'))
   } finally {
     specimenSaving.value = false
   }
@@ -538,23 +661,23 @@ const formatTime = (value) => {
   if (!value) {
     return '-'
   }
-  return new Date(value).toLocaleString('zh-CN', { hour12: false })
+  return new Date(value).toLocaleString()
 }
+
+const handlePopState = () => {
+  applyRoute()
+}
+
+watch([currentView, activeMenu], () => {
+  document.title = currentView.value === 'home' ? '信息管理平台登录' : pageTitle.value
+})
 
 onMounted(() => {
   applyRoute()
-  window.addEventListener('popstate', applyRoute)
+  window.addEventListener('popstate', handlePopState)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('popstate', applyRoute)
+  window.removeEventListener('popstate', handlePopState)
 })
-
-watch(
-  [currentView, activeMenu],
-  () => {
-    document.title = currentView.value === 'home' ? '信息管理平台' : pageTitle.value
-  },
-  { immediate: true }
-)
 </script>

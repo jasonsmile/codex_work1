@@ -31,6 +31,11 @@ type CreateSysUserRequest struct {
 	Enable      int64  `json:"enable"`
 }
 
+type LoginSysUserRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
 type SysUserResponse struct {
 	ID          uint64     `json:"id"`
 	UUID        string     `json:"uuid"`

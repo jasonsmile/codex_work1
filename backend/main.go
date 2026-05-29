@@ -35,6 +35,7 @@ func main() {
 		api.POST("/specimens/add", specimenHandler.CreateApplication)
 		api.GET("/specimens/get", specimenHandler.ListApplications)
 		api.POST("/users/add", userHandler.CreateUser)
+		api.POST("/users/login", userHandler.Login)
 	}
 
 	port := os.Getenv("SERVER_PORT")
