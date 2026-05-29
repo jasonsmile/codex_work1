@@ -21,10 +21,7 @@ func NewDrugHandler(database *gorm.DB) *DrugHandler {
 func (h *DrugHandler) CreateDrug(c *gin.Context) {
 	var req models.CreateDrugRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "请求参数不正确",
-			"error":   err.Error(),
-		})
+		badRequest(c, "请求参数不正确", err)
 		return
 	}
 
@@ -34,15 +31,15 @@ func (h *DrugHandler) CreateDrug(c *gin.Context) {
 	req.Specification = strings.TrimSpace(req.Specification)
 
 	if req.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "药品名称不能为空"})
+		badRequest(c, "药品名称不能为空", nil)
 		return
 	}
 	if req.Price <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "价格必须大于 0"})
+		badRequest(c, "价格必须大于 0", nil)
 		return
 	}
 	if req.Stock <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "库存数量必须大于 0"})
+		badRequest(c, "库存数量必须大于 0", nil)
 		return
 	}
 
@@ -56,17 +53,11 @@ func (h *DrugHandler) CreateDrug(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&drug).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "保存药品失败",
-			"error":   err.Error(),
-		})
+		serverError(c, "保存药品失败", err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "保存成功",
-		"data":    drug,
-	})
+	success(c, http.StatusCreated, "保存成功", drug)
 }
 
 func (h *DrugHandler) ListDrugs(c *gin.Context) {
@@ -79,15 +70,9 @@ func (h *DrugHandler) ListDrugs(c *gin.Context) {
 
 	var drugs []models.Drug
 	if err := query.Order("created_at DESC").Find(&drugs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "查询药品失败",
-			"error":   err.Error(),
-		})
+		serverError(c, "查询药品失败", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "查询成功",
-		"data":    drugs,
-	})
+	success(c, http.StatusOK, "查询成功", drugs)
 }

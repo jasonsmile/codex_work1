@@ -26,6 +26,7 @@ func main() {
 
 	drugHandler := handlers.NewDrugHandler(database)
 	specimenHandler := handlers.NewSpecimenHandler(database)
+	userHandler := handlers.NewUserHandler(database)
 
 	api := router.Group("/api")
 	{
@@ -33,6 +34,7 @@ func main() {
 		api.GET("/drugs/get", drugHandler.ListDrugs)
 		api.POST("/specimens/add", specimenHandler.CreateApplication)
 		api.GET("/specimens/get", specimenHandler.ListApplications)
+		api.POST("/users/add", userHandler.CreateUser)
 	}
 
 	port := os.Getenv("SERVER_PORT")

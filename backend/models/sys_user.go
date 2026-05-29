@@ -20,3 +20,41 @@ type SysUser struct {
 func (SysUser) TableName() string {
 	return "sys_users"
 }
+
+type CreateSysUserRequest struct {
+	Username    string `json:"username" binding:"required"`
+	Password    string `json:"password" binding:"required"`
+	HeaderImg   string `json:"headerImg"`
+	AuthorityID uint64 `json:"authorityId"`
+	Phone       string `json:"phone"`
+	Email       string `json:"email"`
+	Enable      int64  `json:"enable"`
+}
+
+type SysUserResponse struct {
+	ID          uint64     `json:"id"`
+	UUID        string     `json:"uuid"`
+	Username    string     `json:"username"`
+	HeaderImg   string     `json:"headerImg"`
+	AuthorityID uint64     `json:"authorityId"`
+	Phone       string     `json:"phone"`
+	Email       string     `json:"email"`
+	Enable      int64      `json:"enable"`
+	CreatedAt   *time.Time `json:"createdAt"`
+	UpdatedAt   *time.Time `json:"updatedAt"`
+}
+
+func NewSysUserResponse(user SysUser) SysUserResponse {
+	return SysUserResponse{
+		ID:          user.ID,
+		UUID:        user.UUID,
+		Username:    user.Username,
+		HeaderImg:   user.HeaderImg,
+		AuthorityID: user.AuthorityID,
+		Phone:       user.Phone,
+		Email:       user.Email,
+		Enable:      user.Enable,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+	}
+}

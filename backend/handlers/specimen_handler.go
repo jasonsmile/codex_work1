@@ -22,10 +22,7 @@ func NewSpecimenHandler(database *gorm.DB) *SpecimenHandler {
 func (h *SpecimenHandler) CreateApplication(c *gin.Context) {
 	var req models.CreateSpecimenApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "请求参数不正确",
-			"error":   err.Error(),
-		})
+		badRequest(c, "请求参数不正确", err)
 		return
 	}
 
@@ -42,27 +39,27 @@ func (h *SpecimenHandler) CreateApplication(c *gin.Context) {
 	req.InspectionDate = strings.TrimSpace(req.InspectionDate)
 
 	if !inList(req.Gender, []string{"男", "女"}) {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "性别必须为男或女"})
+		badRequest(c, "性别必须为男或女", nil)
 		return
 	}
 	if !inList(req.SampleType, []string{"组织", "血浆"}) {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "送检标本类型不正确"})
+		badRequest(c, "送检标本类型不正确", nil)
 		return
 	}
 	if !inList(req.PathologyType, []string{"腺癌", "鳞癌", "腺鳞癌", "大细胞神经内分泌癌", "小细胞肺癌", "其他"}) {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "病理类型不正确"})
+		badRequest(c, "病理类型不正确", nil)
 		return
 	}
 	if req.PDL1Expression < 0 || req.PDL1Expression > 100 {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "PD-L1表达必须在 0 到 100 之间"})
+		badRequest(c, "PD-L1表达必须在 0 到 100 之间", nil)
 		return
 	}
 	if !inList(req.Stage, []string{"I", "II", "III", "IV"}) {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "分期不正确"})
+		badRequest(c, "分期不正确", nil)
 		return
 	}
 	if _, err := time.Parse("2006-01-02", req.InspectionDate); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "送检日期格式必须为 YYYY-MM-DD"})
+		badRequest(c, "送检日期格式必须为 YYYY-MM-DD", nil)
 		return
 	}
 
@@ -83,33 +80,21 @@ func (h *SpecimenHandler) CreateApplication(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&application).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "保存申请单失败",
-			"error":   err.Error(),
-		})
+		serverError(c, "保存申请单失败", err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "保存成功",
-		"data":    application,
-	})
+	success(c, http.StatusCreated, "保存成功", application)
 }
 
 func (h *SpecimenHandler) ListApplications(c *gin.Context) {
 	var applications []models.SpecimenApplication
 	if err := h.db.Order("created_at DESC").Find(&applications).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "查询申请单失败",
-			"error":   err.Error(),
-		})
+		serverError(c, "查询申请单失败", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "查询成功",
-		"data":    applications,
-	})
+	success(c, http.StatusOK, "查询成功", applications)
 }
 
 func inList(value string, options []string) bool {
