@@ -89,7 +89,44 @@ func (h *SpecimenHandler) CreateApplication(c *gin.Context) {
 
 func (h *SpecimenHandler) ListApplications(c *gin.Context) {
 	var applications []models.SpecimenApplication
-	if err := h.db.Order("created_at DESC").Find(&applications).Error; err != nil {
+
+	name := strings.TrimSpace(c.Query("name"))
+	idNumber := strings.TrimSpace(c.Query("idNumber"))
+	inspectionDateStart := strings.TrimSpace(c.Query("inspectionDateStart"))
+	inspectionDateEnd := strings.TrimSpace(c.Query("inspectionDateEnd"))
+
+	if inspectionDateStart != "" {
+		if _, err := time.Parse("2006-01-02", inspectionDateStart); err != nil {
+			badRequest(c, "送检开始日期格式必须为 YYYY-MM-DD", nil)
+			return
+		}
+	}
+	if inspectionDateEnd != "" {
+		if _, err := time.Parse("2006-01-02", inspectionDateEnd); err != nil {
+			badRequest(c, "送检结束日期格式必须为 YYYY-MM-DD", nil)
+			return
+		}
+	}
+	if inspectionDateStart != "" && inspectionDateEnd != "" && inspectionDateStart > inspectionDateEnd {
+		badRequest(c, "送检开始日期不能晚于结束日期", nil)
+		return
+	}
+
+	query := h.db.Model(&models.SpecimenApplication{})
+	if name != "" {
+		query = query.Where("name = ?", name)
+	}
+	if idNumber != "" {
+		query = query.Where("id_number = ?", idNumber)
+	}
+	if inspectionDateStart != "" {
+		query = query.Where("inspection_date >= ?", inspectionDateStart)
+	}
+	if inspectionDateEnd != "" {
+		query = query.Where("inspection_date <= ?", inspectionDateEnd)
+	}
+
+	if err := query.Order("created_at DESC").Find(&applications).Error; err != nil {
 		serverError(c, "查询申请单失败", err)
 		return
 	}
