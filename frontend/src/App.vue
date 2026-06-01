@@ -240,7 +240,7 @@
               </div>
             </div>
 
-            <el-table :data="drugs" v-loading="loading" border stripe empty-text="暂无药品数据">
+            <el-table :data="pagedDrugs" v-loading="loading" border stripe empty-text="暂无药品数据">
               <el-table-column prop="name" label="药品名称" min-width="150" />
               <el-table-column prop="manufacturer" label="生产厂家" min-width="160" />
               <el-table-column prop="approvalNumber" label="批准文号" min-width="150" />
@@ -253,6 +253,16 @@
                 <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
               </el-table-column>
             </el-table>
+            <div class="pagination-bar">
+              <span>当前第 {{ drugPage }} 页 / 共 {{ drugTotalPages }} 页</span>
+              <el-pagination
+                layout="prev, pager, next"
+                :current-page="drugPage"
+                :page-size="pageSize"
+                :total="drugs.length"
+                @current-change="drugPage = $event"
+              />
+            </div>
           </section>
         </template>
 
@@ -426,6 +436,26 @@
                   @change="fetchSpecimens"
                 />
               </label>
+              <el-upload
+                v-if="canCreateSpecimens"
+                class="specimen-upload"
+                accept=".xlsx,.xls"
+                :auto-upload="false"
+                :disabled="specimenImporting"
+                :show-file-list="false"
+                :on-change="confirmSpecimenExcelUpload"
+              >
+                <el-button :loading="specimenImporting">
+                  <el-icon><Upload /></el-icon>
+                  <span>批量上传</span>
+                </el-button>
+                <el-progress
+                  v-if="specimenImporting || specimenImportProgress > 0"
+                  class="specimen-upload-progress"
+                  :percentage="specimenImportProgress"
+                  :stroke-width="6"
+                />
+              </el-upload>
               <div class="query-actions">
                 <el-button type="primary" @click="fetchSpecimens">
                   <el-icon><Search /></el-icon>
@@ -441,7 +471,10 @@
 
           <section class="panel">
             <div class="table-toolbar">
-              <h2>申请单列表</h2>
+              <el-button v-if="canCreateSpecimens" type="primary" @click="specimenDrawerVisible = true">
+                <el-icon><Plus /></el-icon>
+                <span>新增</span>
+              </el-button>
             </div>
             <div class="table-toolbar specimen-toolbar">
               <el-form :model="specimenSearchForm" class="specimen-search" @submit.prevent>
@@ -491,7 +524,7 @@
               </div>
             </div>
             <el-table
-              :data="specimenApplications"
+              :data="pagedSpecimenApplications"
               v-loading="specimenLoading"
               border
               stripe
@@ -514,6 +547,16 @@
                 <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
               </el-table-column>
             </el-table>
+            <div class="pagination-bar">
+              <span>当前第 {{ specimenPage }} 页 / 共 {{ specimenTotalPages }} 页</span>
+              <el-pagination
+                layout="prev, pager, next"
+                :current-page="specimenPage"
+                :page-size="pageSize"
+                :total="specimenApplications.length"
+                @current-change="specimenPage = $event"
+              />
+            </div>
           </section>
         </template>
 
@@ -598,7 +641,7 @@
           </el-drawer>
 
           <section class="panel">
-            <el-table :data="users" v-loading="userLoading" border stripe empty-text="暂无用户数据">
+            <el-table :data="pagedUsers" v-loading="userLoading" border stripe empty-text="暂无用户数据">
               <el-table-column prop="username" label="用户名" min-width="140" />
               <el-table-column prop="authorityId" label="角色" min-width="130">
                 <template #default="{ row }">{{ roleLabel(row.authorityId) }}</template>
@@ -621,6 +664,16 @@
                 </template>
               </el-table-column>
             </el-table>
+            <div class="pagination-bar">
+              <span>当前第 {{ userPage }} 页 / 共 {{ userTotalPages }} 页</span>
+              <el-pagination
+                layout="prev, pager, next"
+                :current-page="userPage"
+                :page-size="pageSize"
+                :total="users.length"
+                @current-change="userPage = $event"
+              />
+            </div>
           </section>
         </template>
       </section>
@@ -633,7 +686,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, FirstAidKit, InfoFilled, Plus, Refresh, Search, Setting, SwitchButton, UserFilled } from '@element-plus/icons-vue'
+import { Document, FirstAidKit, InfoFilled, Plus, Refresh, Search, Setting, SwitchButton, Upload, UserFilled } from '@element-plus/icons-vue'
 import techLogo from './assets/tech-logo.png'
 
 const API_BASE = '/api'
@@ -699,11 +752,17 @@ const userForm = reactive(createInitialUserForm())
 const drugs = ref([])
 const specimenApplications = ref([])
 const users = ref([])
+const pageSize = 20
+const drugPage = ref(1)
+const specimenPage = ref(1)
+const userPage = ref(1)
 const keyword = ref('')
 const loading = ref(false)
 const saving = ref(false)
 const specimenLoading = ref(false)
 const specimenSaving = ref(false)
+const specimenImporting = ref(false)
+const specimenImportProgress = ref(0)
 const loginLoading = ref(false)
 const loginFocused = ref(false)
 const userLoading = ref(false)
@@ -772,6 +831,21 @@ const canViewMenu = (menu) => allowedMenus.value.includes(menu)
 
 const firstAllowedMenu = () => allowedMenus.value[0] || 'drugs'
 
+const getTotalPages = (total) => Math.max(1, Math.ceil(total / pageSize))
+
+const paginateRows = (rows, page) => {
+  const start = (page - 1) * pageSize
+  return rows.slice(start, start + pageSize)
+}
+
+const drugTotalPages = computed(() => getTotalPages(drugs.value.length))
+const specimenTotalPages = computed(() => getTotalPages(specimenApplications.value.length))
+const userTotalPages = computed(() => getTotalPages(users.value.length))
+
+const pagedDrugs = computed(() => paginateRows(drugs.value, drugPage.value))
+const pagedSpecimenApplications = computed(() => paginateRows(specimenApplications.value, specimenPage.value))
+const pagedUsers = computed(() => paginateRows(users.value, userPage.value))
+
 const loginRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
@@ -837,6 +911,7 @@ const fetchDrugs = async () => {
       params: { name: keyword.value || undefined }
     })
     drugs.value = data.data || []
+    drugPage.value = 1
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '查询失败'))
   } finally {
@@ -857,10 +932,113 @@ const fetchSpecimens = async () => {
       }
     })
     specimenApplications.value = data.data || []
+    specimenPage.value = 1
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '查询申请单失败'))
   } finally {
     specimenLoading.value = false
+  }
+}
+
+const validateSpecimenExcelFile = (file) => {
+  const fileName = file.name.toLowerCase()
+  const validType = fileName.endsWith('.xlsx') || fileName.endsWith('.xls')
+  if (!validType) {
+    ElMessage.error('仅支持上传 .xlsx、.xls 格式文件')
+    return false
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 10MB')
+    return false
+  }
+  return true
+}
+
+const confirmSpecimenExcelUpload = async (uploadFile) => {
+  const file = uploadFile.raw
+  if (!file || specimenImporting.value) {
+    return
+  }
+  if (!validateSpecimenExcelFile(file)) {
+    return
+  }
+
+  try {
+    const preview = await previewSpecimenExcel(file)
+    await ElMessageBox.confirm(
+      `<div class="upload-confirm-content">
+        <p>确认上传文件 ${escapeHtml(file.name)}</p>
+        <p>导入 <strong class="upload-count-success">${preview.successCount || 0}</strong> 条</p>
+        <p>跳过 <strong class="upload-count-danger">${preview.skippedCount || 0}</strong> 条</p>
+      </div>`,
+      '批量上传确认',
+      {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning',
+      dangerouslyUseHTMLString: true
+      }
+    )
+    await uploadSpecimenExcel(file)
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(getErrorMessage(error, '批量上传失败'))
+    }
+  }
+}
+
+const escapeHtml = (value) =>
+  String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[char])
+
+const previewSpecimenExcel = async (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const { data } = await axios.post(`${API_BASE}/specimens/import/preview`, formData)
+  return data.data || {}
+}
+
+const uploadSpecimenExcel = async (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  specimenImporting.value = true
+  specimenImportProgress.value = 0
+  try {
+    const { data } = await axios.post(`${API_BASE}/specimens/import`, formData, {
+      onUploadProgress: (event) => {
+        if (event.total) {
+          specimenImportProgress.value = Math.min(99, Math.round((event.loaded * 100) / event.total))
+        }
+      }
+    })
+    specimenImportProgress.value = 100
+    const result = data.data || {}
+    ElMessage.success(`导入完成，成功 ${result.successCount || 0} 条，跳过 ${result.skippedCount || 0} 条`)
+    if (result.errors?.length) {
+      const detail = result.errors
+        .slice(0, 10)
+        .map((item) => `第 ${item.row} 行：${item.message}`)
+        .join('\n')
+      await ElMessageBox.alert(detail, '导入跳过数据', {
+        confirmButtonText: '知道了',
+        type: 'warning'
+      })
+    }
+    await fetchSpecimens()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '批量上传失败'))
+  } finally {
+    specimenImporting.value = false
+    window.setTimeout(() => {
+      if (!specimenImporting.value) {
+        specimenImportProgress.value = 0
+      }
+    }, 800)
   }
 }
 
@@ -869,6 +1047,7 @@ const fetchUsers = async () => {
   try {
     const { data } = await axios.get(`${API_BASE}/users/get`)
     users.value = data.data || []
+    userPage.value = 1
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '查询用户失败'))
   } finally {
@@ -1164,6 +1343,24 @@ const handlePopState = () => {
 
 watch([currentView, activeMenu], () => {
   document.title = currentView.value === 'home' ? '信息管理平台登录' : pageTitle.value
+})
+
+watch(drugTotalPages, (totalPages) => {
+  if (drugPage.value > totalPages) {
+    drugPage.value = totalPages
+  }
+})
+
+watch(specimenTotalPages, (totalPages) => {
+  if (specimenPage.value > totalPages) {
+    specimenPage.value = totalPages
+  }
+})
+
+watch(userTotalPages, (totalPages) => {
+  if (userPage.value > totalPages) {
+    userPage.value = totalPages
+  }
 })
 
 onMounted(() => {

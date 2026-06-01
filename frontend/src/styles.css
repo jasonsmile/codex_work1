@@ -657,7 +657,7 @@ body {
 .specimen-search {
   display: grid;
   align-items: center;
-  grid-template-columns: auto auto max-content minmax(0, 1fr);
+  grid-template-columns: auto auto max-content auto minmax(0, 1fr);
   gap: 14px 28px;
   width: 100%;
 }
@@ -712,10 +712,45 @@ body {
   margin-left: auto;
 }
 
+.specimen-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.specimen-upload-progress {
+  width: 150px;
+}
+
+.upload-confirm-content p {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+.upload-count-success {
+  color: #16a34a;
+  font-weight: 800;
+}
+
+.upload-count-danger {
+  color: #dc2626;
+  font-weight: 800;
+}
+
 .specimen-add-row {
   display: flex;
   justify-content: flex-start;
   width: 100%;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 16px;
+  color: #64748b;
+  font-size: 14px;
 }
 
 @media (max-width: 720px) {
@@ -807,6 +842,9 @@ body {
 
   .query-field .el-input,
   .query-field--date .el-date-editor,
+  .specimen-upload,
+  .specimen-upload .el-button,
+  .specimen-upload-progress,
   .query-actions {
     width: 100%;
   }
@@ -814,6 +852,11 @@ body {
   .query-actions {
     justify-self: stretch;
     margin-left: 0;
+  }
+
+  .pagination-bar {
+    align-items: flex-end;
+    flex-direction: column;
   }
 
   .brand-logo {

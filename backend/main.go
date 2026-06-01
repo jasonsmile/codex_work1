@@ -43,6 +43,8 @@ func main() {
 			protected.POST("/drugs/add", drugHandler.CreateDrug)
 			protected.GET("/drugs/get", drugHandler.ListDrugs)
 			protected.POST("/specimens/add", specimenHandler.CreateApplication)
+			protected.POST("/specimens/import/preview", specimenHandler.PreviewImportApplications)
+			protected.POST("/specimens/import", specimenHandler.ImportApplications)
 			protected.GET("/specimens/get", specimenHandler.ListApplications)
 			protected.POST("/users/add", userHandler.CreateUser)
 			protected.GET("/users/get", userHandler.ListUsers)

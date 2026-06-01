@@ -16,6 +16,8 @@ var defaultCasbinRules = []models.CasbinRule{
 	{PType: "p", V0: "admin", V1: "/api/drugs/add", V2: "POST"},
 	{PType: "p", V0: "admin", V1: "/api/drugs/get", V2: "GET"},
 	{PType: "p", V0: "admin", V1: "/api/specimens/add", V2: "POST"},
+	{PType: "p", V0: "admin", V1: "/api/specimens/import/preview", V2: "POST"},
+	{PType: "p", V0: "admin", V1: "/api/specimens/import", V2: "POST"},
 	{PType: "p", V0: "admin", V1: "/api/specimens/get", V2: "GET"},
 	{PType: "p", V0: "admin", V1: "/api/users/add", V2: "POST"},
 	{PType: "p", V0: "admin", V1: "/api/users/get", V2: "GET"},
@@ -23,6 +25,8 @@ var defaultCasbinRules = []models.CasbinRule{
 
 	{PType: "p", V0: "specimen_manager", V1: "/api/drugs/get", V2: "GET"},
 	{PType: "p", V0: "specimen_manager", V1: "/api/specimens/add", V2: "POST"},
+	{PType: "p", V0: "specimen_manager", V1: "/api/specimens/import/preview", V2: "POST"},
+	{PType: "p", V0: "specimen_manager", V1: "/api/specimens/import", V2: "POST"},
 	{PType: "p", V0: "specimen_manager", V1: "/api/specimens/get", V2: "GET"},
 
 	{PType: "p", V0: "viewer", V1: "/api/drugs/get", V2: "GET"},

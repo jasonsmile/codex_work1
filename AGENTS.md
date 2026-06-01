@@ -51,6 +51,7 @@ npm.cmd run dev
 - 后端模型放在 `backend/models`。
 - 后端接口逻辑放在 `backend/handlers`。
 - 路由统一在 `backend/main.go` 注册。
+- Go 代码中双引号内的字符串命名使用英文下划线 `_` 分隔，不要把多个词直接连在一起。
 - 前端主要页面逻辑目前集中在 `frontend/src/App.vue`。
 - 前端全局样式在 `frontend/src/styles.css`。
 - 不要提交或依赖 `frontend/dist`、`frontend/node_modules`、`.gocache`、`.gomodcache` 等生成目录。
