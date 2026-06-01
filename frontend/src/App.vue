@@ -362,7 +362,34 @@
           <section class="panel">
             <div class="table-toolbar">
               <h2>申请单列表</h2>
-              <el-button type="primary" plain @click="fetchSpecimens">刷新</el-button>
+              <el-form :model="specimenSearchForm" class="specimen-search" @submit.prevent>
+                <el-input
+                  v-model.trim="specimenSearchForm.name"
+                  placeholder="姓名精确查询"
+                  clearable
+                  @clear="fetchSpecimens"
+                  @keyup.enter="fetchSpecimens"
+                />
+                <el-input
+                  v-model.trim="specimenSearchForm.idNumber"
+                  placeholder="ID号精确查询"
+                  clearable
+                  @clear="fetchSpecimens"
+                  @keyup.enter="fetchSpecimens"
+                />
+                <el-date-picker
+                  v-model="specimenSearchForm.inspectionDateRange"
+                  type="daterange"
+                  value-format="YYYY-MM-DD"
+                  start-placeholder="送检开始日期"
+                  end-placeholder="送检结束日期"
+                  range-separator="至"
+                  class="specimen-date-range"
+                  @change="fetchSpecimens"
+                />
+                <el-button type="primary" plain @click="fetchSpecimens">查询</el-button>
+                <el-button @click="resetSpecimenSearch">重置</el-button>
+              </el-form>
             </div>
             <el-table
               :data="specimenApplications"
@@ -564,6 +591,11 @@ const sideMenuRef = ref()
 const loginForm = reactive({ username: '', password: '' })
 const form = reactive(createInitialForm())
 const specimenForm = reactive(createInitialSpecimenForm())
+const specimenSearchForm = reactive({
+  name: '',
+  idNumber: '',
+  inspectionDateRange: []
+})
 const userForm = reactive(createInitialUserForm())
 const drugs = ref([])
 const specimenApplications = ref([])
@@ -713,7 +745,15 @@ const fetchDrugs = async () => {
 const fetchSpecimens = async () => {
   specimenLoading.value = true
   try {
-    const { data } = await axios.get(`${API_BASE}/specimens/get`)
+    const [inspectionDateStart, inspectionDateEnd] = specimenSearchForm.inspectionDateRange || []
+    const { data } = await axios.get(`${API_BASE}/specimens/get`, {
+      params: {
+        name: specimenSearchForm.name || undefined,
+        idNumber: specimenSearchForm.idNumber || undefined,
+        inspectionDateStart: inspectionDateStart || undefined,
+        inspectionDateEnd: inspectionDateEnd || undefined
+      }
+    })
     specimenApplications.value = data.data || []
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '查询申请单失败'))
@@ -985,6 +1025,13 @@ const cancelDrugDrawer = () => {
 const resetSpecimenForm = () => {
   Object.assign(specimenForm, createInitialSpecimenForm())
   specimenFormRef.value?.clearValidate()
+}
+
+const resetSpecimenSearch = async () => {
+  specimenSearchForm.name = ''
+  specimenSearchForm.idNumber = ''
+  specimenSearchForm.inspectionDateRange = []
+  await fetchSpecimens()
 }
 
 const cancelSpecimenDrawer = () => {
