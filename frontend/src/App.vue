@@ -1,46 +1,72 @@
 <template>
   <main class="page" :class="{ 'page--home': currentView === 'home', 'page--workspace': currentView !== 'home' }">
-    <section v-if="currentView === 'home'" class="home-view login-view">
-      <img class="brand-logo" :src="techLogo" alt="信息管理平台标识" />
-      <h1>信息管理平台</h1>
-      <p class="tagline">A simple platform for information management.</p>
+    <section v-if="currentView === 'home'" class="login-shell">
+      <div class="login-mascot" :class="{ 'login-mascot--watching': mascotWatching }" aria-hidden="true">
+        <div class="mascot-card mascot-card--purple">
+          <span class="eye eye--left"></span>
+          <span class="eye eye--right"></span>
+        </div>
+        <div class="mascot-card mascot-card--dark">
+          <span class="eye eye--left"></span>
+          <span class="eye eye--right"></span>
+        </div>
+        <div class="mascot-card mascot-card--orange">
+          <span class="eye eye--left"></span>
+          <span class="eye eye--right"></span>
+        </div>
+        <div class="mascot-card mascot-card--yellow">
+          <span class="eye eye--left"></span>
+          <span class="eye eye--right"></span>
+          <span class="mascot-mouth"></span>
+        </div>
+      </div>
 
-      <el-form
-        ref="loginFormRef"
-        :model="loginForm"
-        :rules="loginRules"
-        label-position="top"
-        class="login-form"
-      >
-        <el-form-item label="用户名" prop="username">
-          <el-input
-            v-model.trim="loginForm.username"
-            placeholder="请输入用户名"
-            size="large"
-            clearable
-            @keyup.enter="submitLogin"
-          />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input
-            v-model.trim="loginForm.password"
-            type="password"
-            placeholder="请输入密码"
-            size="large"
-            show-password
-            @keyup.enter="submitLogin"
-          />
-        </el-form-item>
-        <el-button
-          type="primary"
-          size="large"
-          class="login-button"
-          :loading="loginLoading"
-          @click="submitLogin"
+      <section class="home-view login-view">
+        <img class="brand-logo" :src="techLogo" alt="信息管理平台标识" />
+        <h1>信息管理平台</h1>
+        <p class="tagline">A simple platform for information management.</p>
+
+        <el-form
+          ref="loginFormRef"
+          :model="loginForm"
+          :rules="loginRules"
+          label-position="top"
+          class="login-form"
         >
-          登录
-        </el-button>
-      </el-form>
+          <el-form-item label="用户名" prop="username">
+            <el-input
+              v-model.trim="loginForm.username"
+              placeholder="请输入用户名"
+              size="large"
+              clearable
+              @focus="loginFocused = true"
+              @blur="loginFocused = false"
+              @keyup.enter="submitLogin"
+            />
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input
+              v-model.trim="loginForm.password"
+              type="password"
+              placeholder="请输入密码"
+              size="large"
+              show-password
+              @focus="loginFocused = true"
+              @blur="loginFocused = false"
+              @keyup.enter="submitLogin"
+            />
+          </el-form-item>
+          <el-button
+            type="primary"
+            size="large"
+            class="login-button"
+            :loading="loginLoading"
+            @click="submitLogin"
+          >
+            登录
+          </el-button>
+        </el-form>
+      </section>
 
       <footer class="home-footer">
         <span>Powered by Codex</span>
@@ -186,6 +212,19 @@
             </el-form>
           </el-drawer>
 
+          <section class="panel query-panel">
+            <div class="search-box">
+              <el-input
+                v-model.trim="keyword"
+                placeholder="按药品名称搜索"
+                clearable
+                @clear="fetchDrugs"
+                @keyup.enter="fetchDrugs"
+              />
+              <el-button type="primary" @click="fetchDrugs">查询</el-button>
+            </div>
+          </section>
+
           <section class="panel">
             <div class="table-toolbar">
               <h2>药品列表</h2>
@@ -218,13 +257,6 @@
         </template>
 
         <template v-else-if="activeMenu === 'specimens'">
-          <section v-if="canCreateSpecimens" class="panel action-panel">
-            <el-button type="primary" @click="specimenDrawerVisible = true">
-              <el-icon><Plus /></el-icon>
-              <span>添加申请单</span>
-            </el-button>
-          </section>
-
           <el-drawer v-model="specimenDrawerVisible" direction="rtl" size="640px" :show-close="false">
             <template #header>
               <div class="drawer-header">
@@ -359,37 +391,104 @@
             </el-form>
           </el-drawer>
 
-          <section class="panel">
-            <div class="table-toolbar">
-              <h2>申请单列表</h2>
-              <el-form :model="specimenSearchForm" class="specimen-search" @submit.prevent>
+          <section class="panel query-panel specimen-query-panel">
+            <el-form :model="specimenSearchForm" class="specimen-search" @submit.prevent>
+              <label class="query-field">
+                <span>姓名</span>
                 <el-input
                   v-model.trim="specimenSearchForm.name"
-                  placeholder="姓名精确查询"
+                  placeholder="姓名"
                   clearable
                   @clear="fetchSpecimens"
                   @keyup.enter="fetchSpecimens"
                 />
+              </label>
+              <label class="query-field">
+                <span>ID号</span>
                 <el-input
                   v-model.trim="specimenSearchForm.idNumber"
-                  placeholder="ID号精确查询"
+                  placeholder="ID号"
                   clearable
                   @clear="fetchSpecimens"
                   @keyup.enter="fetchSpecimens"
                 />
+              </label>
+              <label class="query-field query-field--date">
+                <span>送检日期</span>
                 <el-date-picker
                   v-model="specimenSearchForm.inspectionDateRange"
                   type="daterange"
                   value-format="YYYY-MM-DD"
-                  start-placeholder="送检开始日期"
-                  end-placeholder="送检结束日期"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
                   range-separator="至"
                   class="specimen-date-range"
                   @change="fetchSpecimens"
                 />
-                <el-button type="primary" plain @click="fetchSpecimens">查询</el-button>
-                <el-button @click="resetSpecimenSearch">重置</el-button>
+              </label>
+              <div class="query-actions">
+                <el-button type="primary" @click="fetchSpecimens">
+                  <el-icon><Search /></el-icon>
+                  <span>查询</span>
+                </el-button>
+                <el-button @click="resetSpecimenSearch">
+                  <el-icon><Refresh /></el-icon>
+                  <span>重置</span>
+                </el-button>
+              </div>
+            </el-form>
+          </section>
+
+          <section class="panel">
+            <div class="table-toolbar">
+              <h2>申请单列表</h2>
+            </div>
+            <div class="table-toolbar specimen-toolbar">
+              <el-form :model="specimenSearchForm" class="specimen-search" @submit.prevent>
+                <label class="query-field">
+                  <span>姓名</span>
+                  <el-input
+                    v-model.trim="specimenSearchForm.name"
+                    placeholder="姓名"
+                    clearable
+                    @clear="fetchSpecimens"
+                    @keyup.enter="fetchSpecimens"
+                  />
+                </label>
+                <label class="query-field">
+                  <span>ID号</span>
+                  <el-input
+                    v-model.trim="specimenSearchForm.idNumber"
+                    placeholder="ID号"
+                    clearable
+                    @clear="fetchSpecimens"
+                    @keyup.enter="fetchSpecimens"
+                  />
+                </label>
+                <label class="query-field query-field--date">
+                  <span>送检日期</span>
+                  <el-date-picker
+                    v-model="specimenSearchForm.inspectionDateRange"
+                    type="daterange"
+                    value-format="YYYY-MM-DD"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    range-separator="至"
+                    class="specimen-date-range"
+                    @change="fetchSpecimens"
+                  />
+                </label>
+                <div class="query-actions">
+                  <el-button type="primary" @click="fetchSpecimens">查询</el-button>
+                  <el-button @click="resetSpecimenSearch">重置</el-button>
+                </div>
               </el-form>
+              <div class="specimen-add-row">
+                <el-button v-if="canCreateSpecimens" type="primary" @click="specimenDrawerVisible = true">
+                  <el-icon><Plus /></el-icon>
+                  <span>新增加</span>
+                </el-button>
+              </div>
             </div>
             <el-table
               :data="specimenApplications"
@@ -534,7 +633,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, FirstAidKit, InfoFilled, Plus, Setting, SwitchButton, UserFilled } from '@element-plus/icons-vue'
+import { Document, FirstAidKit, InfoFilled, Plus, Refresh, Search, Setting, SwitchButton, UserFilled } from '@element-plus/icons-vue'
 import techLogo from './assets/tech-logo.png'
 
 const API_BASE = '/api'
@@ -606,6 +705,7 @@ const saving = ref(false)
 const specimenLoading = ref(false)
 const specimenSaving = ref(false)
 const loginLoading = ref(false)
+const loginFocused = ref(false)
 const userLoading = ref(false)
 const userSaving = ref(false)
 const drugDrawerVisible = ref(false)
@@ -615,6 +715,8 @@ const currentView = ref('home')
 const activeMenu = ref('drugs')
 const currentUser = ref(readStoredUser())
 const defaultOpenedMenus = ref([])
+
+const mascotWatching = computed(() => loginFocused.value || loginForm.username !== '' || loginForm.password !== '')
 
 const roleMenus = {
   888: ['drugs', 'specimens', 'about', 'users'],

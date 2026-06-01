@@ -114,10 +114,10 @@ func (h *SpecimenHandler) ListApplications(c *gin.Context) {
 
 	query := h.db.Model(&models.SpecimenApplication{})
 	if name != "" {
-		query = query.Where("name = ?", name)
+		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
 	if idNumber != "" {
-		query = query.Where("id_number = ?", idNumber)
+		query = query.Where("id_number LIKE ?", "%"+idNumber+"%")
 	}
 	if inspectionDateStart != "" {
 		query = query.Where("inspection_date >= ?", inspectionDateStart)
