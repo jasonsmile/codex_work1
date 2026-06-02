@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"drug-info/backend/config"
 	"drug-info/backend/db"
 	"drug-info/backend/handlers"
 
@@ -22,6 +23,11 @@ func main() {
 		log.Fatalf("init casbin failed: %v", err)
 	}
 
+	appConfig, err := config.Load("config.yaml")
+	if err != nil {
+		log.Fatalf("load config failed: %v", err)
+	}
+
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowAllOrigins: true,
@@ -32,6 +38,7 @@ func main() {
 	drugHandler := handlers.NewDrugHandler(database)
 	specimenHandler := handlers.NewSpecimenHandler(database)
 	userHandler := handlers.NewUserHandler(database)
+	fileHandler := handlers.NewFileHandler(database, appConfig.QiniuKodo)
 
 	api := router.Group("/api")
 	{
@@ -46,6 +53,12 @@ func main() {
 			protected.POST("/specimens/import/preview", specimenHandler.PreviewImportApplications)
 			protected.POST("/specimens/import", specimenHandler.ImportApplications)
 			protected.GET("/specimens/get", specimenHandler.ListApplications)
+			protected.POST("/fileUploadAndDownload/upload", fileHandler.Upload)
+			protected.GET("/fileUploadAndDownload/get", fileHandler.List)
+			protected.GET("/fileUploadAndDownload/download/:id", fileHandler.Download)
+			protected.POST("/files/upload", fileHandler.Upload)
+			protected.GET("/files/get", fileHandler.List)
+			protected.GET("/files/download/:id", fileHandler.Download)
 			protected.POST("/users/add", userHandler.CreateUser)
 			protected.GET("/users/get", userHandler.ListUsers)
 			protected.POST("/users/delete", userHandler.DeleteUser)

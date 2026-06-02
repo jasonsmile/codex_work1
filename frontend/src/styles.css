@@ -799,6 +799,33 @@ body {
   width: 100%;
 }
 
+.media-table {
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.media-table .media-table-header {
+  height: 44px;
+  color: #334155;
+  background: #f1f5f9 !important;
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.media-table .el-table__header th {
+  border-bottom: 1px solid #dbe4ef;
+}
+
+.media-table .el-table__row td {
+  color: #475569;
+}
+
+.media-format-tag {
+  min-width: 48px;
+  justify-content: center;
+  text-transform: uppercase;
+}
+
 .pagination-bar {
   display: flex;
   align-items: center;

@@ -101,6 +101,10 @@
             <el-icon><Document /></el-icon>
             <span>标本留存信息</span>
           </el-menu-item>
+          <el-menu-item v-if="canViewMenu('files')" index="files">
+            <el-icon><FolderOpened /></el-icon>
+            <span>媒体库（上传和下载）</span>
+          </el-menu-item>
           <el-menu-item v-if="canViewMenu('about')" index="about">
             <el-icon><InfoFilled /></el-icon>
             <span>关于我们</span>
@@ -576,6 +580,72 @@
           </section>
         </template>
 
+        <template v-else-if="activeMenu === 'files'">
+          <section class="panel action-panel">
+            <el-upload
+              accept=".jpg,.jpeg,.png,.svg,.mp4"
+              :auto-upload="false"
+              :disabled="mediaUploading"
+              :show-file-list="false"
+              :on-change="handleMediaFileSelect"
+            >
+              <el-button type="primary" :loading="mediaUploading">
+                <el-icon><Upload /></el-icon>
+                <span>上传文件</span>
+              </el-button>
+            </el-upload>
+          </section>
+
+          <section class="panel">
+            <el-table
+              :key="`media-${mediaFiles.length}-${mediaPage}-${mediaListVersion}`"
+              class="media-table"
+              :data="pagedMediaFiles"
+              v-loading="mediaLoading"
+              header-cell-class-name="media-table-header"
+              row-key="id"
+              border
+              stripe
+              empty-text="暂无文件数据"
+            >
+              <el-table-column prop="displayName" label="文件名称" min-width="260" />
+              <el-table-column prop="fileType" label="类型" width="130">
+                <template #default="{ row }">
+                  <el-tag :type="row.fileType === 'video' ? 'warning' : 'success'">
+                    {{ row.fileType === 'video' ? '视频' : '图片' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="标签" width="130">
+                <template #default="{ row }">
+                  <el-tag class="media-format-tag" type="info">{{ getMediaExtension(row) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="日期" min-width="180">
+                <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="primary" link @click="downloadMediaFile(row)">
+                    <el-icon><Download /></el-icon>
+                    <span>下载</span>
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="pagination-bar">
+              <span>当前第 {{ mediaPage }} 页 / 共 {{ mediaTotalPages }} 页</span>
+              <el-pagination
+                layout="prev, pager, next"
+                :current-page="mediaPage"
+                :page-size="pageSize"
+                :total="mediaFiles.length"
+                @current-change="mediaPage = $event"
+              />
+            </div>
+          </section>
+        </template>
+
         <template v-else-if="activeMenu === 'about'">
           <section class="panel about-panel">
             <img class="about-logo" :src="techLogo" alt="信息管理平台标识" />
@@ -702,7 +772,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, FirstAidKit, House, InfoFilled, Plus, Refresh, Search, Setting, SwitchButton, Upload, UserFilled } from '@element-plus/icons-vue'
+import { Document, Download, FirstAidKit, FolderOpened, House, InfoFilled, Plus, Refresh, Search, Setting, SwitchButton, Upload, UserFilled } from '@element-plus/icons-vue'
 import techLogo from './assets/tech-logo.png'
 import homeHeroArt from './assets/home-hero-art.png'
 
@@ -780,10 +850,12 @@ const userForm = reactive(createInitialUserForm())
 const drugs = ref([])
 const specimenApplications = ref([])
 const users = ref([])
+const mediaFiles = ref([])
 const pageSize = 20
 const drugPage = ref(1)
 const specimenPage = ref(1)
 const userPage = ref(1)
+const mediaPage = ref(1)
 const keyword = ref('')
 const loading = ref(false)
 const saving = ref(false)
@@ -795,6 +867,9 @@ const loginLoading = ref(false)
 const loginFocused = ref(false)
 const userLoading = ref(false)
 const userSaving = ref(false)
+const mediaLoading = ref(false)
+const mediaUploading = ref(false)
+const mediaListVersion = ref(0)
 const drugDrawerVisible = ref(false)
 const specimenDrawerVisible = ref(false)
 const userDrawerVisible = ref(false)
@@ -806,9 +881,9 @@ const defaultOpenedMenus = ref([])
 const mascotWatching = computed(() => loginFocused.value || loginForm.username !== '' || loginForm.password !== '')
 
 const roleMenus = {
-  888: ['home', 'drugs', 'specimens', 'about', 'users'],
-  777: ['home', 'specimens', 'about'],
-  999: ['home', 'drugs', 'specimens', 'about']
+  888: ['home', 'drugs', 'specimens', 'files', 'about', 'users'],
+  777: ['home', 'specimens', 'files', 'about'],
+  999: ['home', 'drugs', 'files', 'specimens', 'about']
 }
 
 const pathologyTypes = ['腺癌', '鳞癌', '腺鳞癌', '大细胞神经内分泌癌', '小细胞肺癌', '其他']
@@ -823,6 +898,9 @@ const pageTitle = computed(() => {
   }
   if (activeMenu.value === 'about') {
     return '关于我们'
+  }
+  if (activeMenu.value === 'files') {
+    return '媒体库（上传和下载）'
   }
   if (activeMenu.value === 'users') {
     return '用户管理'
@@ -840,6 +918,7 @@ const menuRoutes = {
   home: '/home',
   drugs: '/drugs',
   specimens: '/specimens',
+  files: '/files',
   about: '/about',
   users: '/users'
 }
@@ -848,6 +927,7 @@ const routeMenus = {
   '/home': 'home',
   '/drugs': 'drugs',
   '/specimens': 'specimens',
+  '/files': 'files',
   '/about': 'about',
   '/users': 'users'
 }
@@ -867,6 +947,9 @@ const firstAllowedMenu = () => allowedMenus.value[0] || 'drugs'
 const getTotalPages = (total) => Math.max(1, Math.ceil(total / pageSize))
 
 const paginateRows = (rows, page) => {
+  if (!Array.isArray(rows)) {
+    return []
+  }
   const start = (page - 1) * pageSize
   return rows.slice(start, start + pageSize)
 }
@@ -874,10 +957,12 @@ const paginateRows = (rows, page) => {
 const drugTotalPages = computed(() => getTotalPages(drugs.value.length))
 const specimenTotalPages = computed(() => getTotalPages(specimenApplications.value.length))
 const userTotalPages = computed(() => getTotalPages(users.value.length))
+const mediaTotalPages = computed(() => getTotalPages(mediaFiles.value.length))
 
 const pagedDrugs = computed(() => paginateRows(drugs.value, drugPage.value))
 const pagedSpecimenApplications = computed(() => paginateRows(specimenApplications.value, specimenPage.value))
 const pagedUsers = computed(() => paginateRows(users.value, userPage.value))
+const pagedMediaFiles = computed(() => paginateRows(Array.isArray(mediaFiles.value) ? mediaFiles.value : [], mediaPage.value))
 
 const loginRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -1122,6 +1207,97 @@ const fetchUsers = async () => {
   }
 }
 
+const fetchMediaFiles = async () => {
+  mediaLoading.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE}/fileUploadAndDownload/get`)
+    const list = Array.isArray(data.data) ? data.data : []
+    mediaFiles.value = list.map((item) => ({ ...item }))
+    mediaListVersion.value += 1
+    mediaPage.value = 1
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '查询文件列表失败'))
+  } finally {
+    mediaLoading.value = false
+  }
+}
+
+const validateMediaFile = (file) => {
+  const fileName = file.name.toLowerCase()
+  const validType = ['.jpg', '.jpeg', '.png', '.svg', '.mp4'].some((suffix) => fileName.endsWith(suffix))
+  if (!validType) {
+    ElMessage.error('仅支持 jpg、png、svg 图片和 mp4 视频')
+    return false
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片和视频不能超过 5MB')
+    return false
+  }
+  return true
+}
+
+const handleMediaFileSelect = async (uploadFile) => {
+  const file = uploadFile.raw
+  if (!file || mediaUploading.value) {
+    return
+  }
+  if (!validateMediaFile(file)) {
+    return
+  }
+
+  mediaUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('displayName', file.name.replace(/\.[^.]+$/, ''))
+    await axios.post(`${API_BASE}/fileUploadAndDownload/upload`, formData)
+    ElMessage.success('上传成功')
+    await fetchMediaFiles()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '上传失败'))
+  } finally {
+    mediaUploading.value = false
+  }
+}
+
+const downloadMediaFile = async (row) => {
+  if (!row.id) {
+    ElMessage.error('文件记录不存在')
+    return
+  }
+
+  try {
+    const { data } = await axios.get(`${API_BASE}/fileUploadAndDownload/download/${row.id}`)
+    const downloadUrl = data.data?.url
+    if (!downloadUrl) {
+      ElMessage.error('文件地址不存在')
+      return
+    }
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = row.fileName
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '下载失败'))
+  }
+}
+
+const openMediaFile = (row) => {
+  if (!row.url) {
+    ElMessage.error('文件地址不存在')
+    return
+  }
+  const link = document.createElement('a')
+  link.href = row.url
+  link.target = '_blank'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+}
+
 const submitLogin = async () => {
   const valid = await loginFormRef.value.validate().catch(() => false)
   if (!valid) {
@@ -1241,6 +1417,9 @@ const fetchActiveMenuData = async () => {
   }
   if (activeMenu.value === 'specimens') {
     await fetchSpecimens()
+  }
+  if (activeMenu.value === 'files') {
+    await fetchMediaFiles()
   }
   if (activeMenu.value === 'users') {
     await fetchUsers()
@@ -1413,6 +1592,17 @@ const cancelUserDrawer = () => {
   userDrawerVisible.value = false
 }
 
+const getMediaExtension = (row) => {
+  const fileName = row?.fileName || row?.displayName || ''
+  const matched = fileName.match(/\.([^.]+)$/)
+  if (matched?.[1]) {
+    return matched[1].toLowerCase()
+  }
+  const contentType = row?.contentType || ''
+  const typeMatched = contentType.match(/\/([a-z0-9.+-]+)$/i)
+  return typeMatched?.[1]?.toLowerCase() || '-'
+}
+
 const formatTime = (value) => {
   if (!value) {
     return '-'
@@ -1443,6 +1633,12 @@ watch(specimenTotalPages, (totalPages) => {
 watch(userTotalPages, (totalPages) => {
   if (userPage.value > totalPages) {
     userPage.value = totalPages
+  }
+})
+
+watch(mediaTotalPages, (totalPages) => {
+  if (mediaPage.value > totalPages) {
+    mediaPage.value = totalPages
   }
 })
 

@@ -1,0 +1,6 @@
+qiniu-kodo:
+  path: 'codex_file'
+  bucket: 'myfiledb'
+  domain: 'tfzjbyhvy.hb-bkt.clouddn.com'
+  access-key: 'hMDX2NQ5YFULG8q0cd0cAadlj83u1NIFPdPlbiMX'
+  secret-key: 'VDL7K2W6Et9kgxiNhiNMh1rZP4vVg1SoLRx3R0ST'
