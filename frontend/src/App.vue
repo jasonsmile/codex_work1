@@ -89,6 +89,10 @@
           @close="handleMenuClose"
           @select="handleMenuSelect"
         >
+          <el-menu-item v-if="canViewMenu('home')" index="home">
+            <el-icon><House /></el-icon>
+            <span>首页</span>
+          </el-menu-item>
           <el-menu-item v-if="canViewMenu('drugs')" index="drugs">
             <el-icon><FirstAidKit /></el-icon>
             <span>药品信息管理</span>
@@ -144,7 +148,19 @@
 
         <section class="content">
 
-        <template v-if="activeMenu === 'drugs'">
+        <template v-if="activeMenu === 'home'">
+          <section class="home-dashboard">
+            <div class="home-dashboard-hero">
+              <img class="home-dashboard-image" :src="homeHeroArt" alt="首页配图" />
+              <div class="home-dashboard-copy">
+                <p>你知道吗</p>
+                <p>我顶着非常大智力障碍和健忘症在学习</p>
+              </div>
+            </div>
+          </section>
+        </template>
+
+        <template v-else-if="activeMenu === 'drugs'">
           <section v-if="canCreateDrugs" class="panel action-panel">
             <el-button type="primary" @click="drugDrawerVisible = true">
               <el-icon><Plus /></el-icon>
@@ -686,11 +702,13 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, FirstAidKit, InfoFilled, Plus, Refresh, Search, Setting, SwitchButton, Upload, UserFilled } from '@element-plus/icons-vue'
+import { Document, FirstAidKit, House, InfoFilled, Plus, Refresh, Search, Setting, SwitchButton, Upload, UserFilled } from '@element-plus/icons-vue'
 import techLogo from './assets/tech-logo.png'
+import homeHeroArt from './assets/home-hero-art.png'
 
 const API_BASE = '/api'
 const USER_STORAGE_KEY = 'medical-info-current-user'
+const LOGIN_ROUTE = '/login'
 
 axios.interceptors.request.use((config) => {
   const user = readStoredUser()
@@ -700,6 +718,16 @@ axios.interceptors.request.use((config) => {
   }
   return config
 })
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      handleAuthExpired()
+    }
+    return Promise.reject(error)
+  }
+)
 
 const createInitialForm = () => ({
   name: '',
@@ -778,15 +806,18 @@ const defaultOpenedMenus = ref([])
 const mascotWatching = computed(() => loginFocused.value || loginForm.username !== '' || loginForm.password !== '')
 
 const roleMenus = {
-  888: ['drugs', 'specimens', 'about', 'users'],
-  777: ['specimens', 'about'],
-  999: ['drugs', 'specimens', 'about']
+  888: ['home', 'drugs', 'specimens', 'about', 'users'],
+  777: ['home', 'specimens', 'about'],
+  999: ['home', 'drugs', 'specimens', 'about']
 }
 
 const pathologyTypes = ['腺癌', '鳞癌', '腺鳞癌', '大细胞神经内分泌癌', '小细胞肺癌', '其他']
 const stages = ['I', 'II', 'III', 'IV']
 
 const pageTitle = computed(() => {
+  if (activeMenu.value === 'home') {
+    return '首页'
+  }
   if (activeMenu.value === 'specimens') {
     return '标本留存信息'
   }
@@ -806,6 +837,7 @@ const breadcrumbParent = computed(() => {
   return ''
 })
 const menuRoutes = {
+  home: '/home',
   drugs: '/drugs',
   specimens: '/specimens',
   about: '/about',
@@ -813,6 +845,7 @@ const menuRoutes = {
 }
 
 const routeMenus = {
+  '/home': 'home',
   '/drugs': 'drugs',
   '/specimens': 'specimens',
   '/about': 'about',
@@ -894,11 +927,45 @@ function readStoredUser() {
       window.localStorage.removeItem(USER_STORAGE_KEY)
       return null
     }
+    if (isTokenExpired(user.token)) {
+      window.localStorage.removeItem(USER_STORAGE_KEY)
+      return null
+    }
     return user
   } catch {
     window.localStorage.removeItem(USER_STORAGE_KEY)
     return null
   }
+}
+
+function isTokenExpired(token) {
+  const claims = parseTokenClaims(token)
+  if (!claims?.expiresAt) {
+    return true
+  }
+  return Number(claims.expiresAt) * 1000 <= Date.now()
+}
+
+function parseTokenClaims(token) {
+  try {
+    const payload = token.split('.')[0]
+    if (!payload) {
+      return null
+    }
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=')
+    return JSON.parse(window.atob(paddedPayload))
+  } catch {
+    return null
+  }
+}
+
+const handleAuthExpired = () => {
+  currentUser.value = null
+  window.localStorage.removeItem(USER_STORAGE_KEY)
+  currentView.value = 'home'
+  activeMenu.value = 'drugs'
+  updateRoute(LOGIN_ROUTE)
 }
 
 const getErrorMessage = (error, fallback) =>
@@ -1082,7 +1149,7 @@ const submitLogin = async () => {
 const openManagement = async () => {
   if (!currentUser.value) {
     currentView.value = 'home'
-    updateRoute('/')
+    updateRoute(LOGIN_ROUTE)
     return
   }
 
@@ -1117,12 +1184,28 @@ const handleMenuClose = (index) => {
 
 const applyRoute = async () => {
   const path = window.location.pathname
+  if (path === '/' || path === LOGIN_ROUTE) {
+    if (currentUser.value) {
+      currentView.value = 'management'
+      activeMenu.value = 'home'
+      updateRoute(menuRoutes.home)
+      await fetchActiveMenuData()
+      return
+    }
+    currentView.value = 'home'
+    activeMenu.value = 'drugs'
+    if (path !== LOGIN_ROUTE) {
+      updateRoute(LOGIN_ROUTE)
+    }
+    return
+  }
+
   const matchedMenu = routeMenus[path]
   if (!matchedMenu || !currentUser.value) {
     currentView.value = 'home'
     activeMenu.value = 'drugs'
-    if (path !== '/') {
-      updateRoute('/')
+    if (path !== LOGIN_ROUTE) {
+      updateRoute(LOGIN_ROUTE)
     }
     return
   }
@@ -1176,7 +1259,7 @@ const logout = () => {
   window.localStorage.removeItem(USER_STORAGE_KEY)
   currentView.value = 'home'
   activeMenu.value = 'drugs'
-  updateRoute('/')
+  updateRoute(LOGIN_ROUTE)
 }
 
 const handleUserCommand = (command) => {
