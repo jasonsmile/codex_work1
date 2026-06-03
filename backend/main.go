@@ -50,6 +50,7 @@ func main() {
 	specimenHandler := handlers.NewSpecimenHandler(database)
 	userHandler := handlers.NewUserHandler(database)
 	fileHandler := handlers.NewFileHandler(database, appConfig.QiniuKodo)
+	traceCodeHandler := handlers.NewTraceCodeHandler(database, appConfig.BaiduOCR)
 
 	api := router.Group("/api")
 	{
@@ -70,6 +71,9 @@ func main() {
 			protected.POST("/files/upload", fileHandler.Upload)
 			protected.GET("/files/get", fileHandler.List)
 			protected.GET("/files/download/:id", fileHandler.Download)
+			protected.POST("/trace_codes/recognize", traceCodeHandler.Recognize)
+			protected.POST("/trace_codes/confirm", traceCodeHandler.Confirm)
+			protected.GET("/trace_codes/get", traceCodeHandler.List)
 			protected.POST("/users/add", userHandler.CreateUser)
 			protected.GET("/users/get", userHandler.ListUsers)
 			protected.POST("/users/delete", userHandler.DeleteUser)

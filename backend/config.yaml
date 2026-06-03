@@ -8,6 +8,12 @@ mysql:
   parse-time: true
   loc: 'Local'
 
+baidu-ocr:
+  ak: 'twSZO6Wo1BzQbH5VvHjMRh24'
+  sk: '8iqWLVXpXrYgPdtU1PF8M6RjY0OyBjSU'
+  token-url: 'https://aip.baidubce.com/oauth/2.0/token'
+  ocr-url: 'https://aip.baidubce.com/rest/2.0/ocr/v1/accurate'
+
 qiniu-kodo:
   path: 'codex_file'
   bucket: 'myfiledb'

@@ -9,6 +9,7 @@ import (
 type Config struct {
 	QiniuKodo QiniuKodoConfig `yaml:"qiniu-kodo"`
 	MySQL     MySQLConfig     `yaml:"mysql"`
+	BaiduOCR  BaiduOCRConfig  `yaml:"baidu-ocr"`
 }
 
 type MySQLConfig struct {
@@ -29,6 +30,13 @@ type QiniuKodoConfig struct {
 	Domain    string `yaml:"domain"`
 	AccessKey string `yaml:"access-key"`
 	SecretKey string `yaml:"secret-key"`
+}
+
+type BaiduOCRConfig struct {
+	AK       string `yaml:"ak"`
+	SK       string `yaml:"sk"`
+	TokenURL string `yaml:"token-url"`
+	OCRURL   string `yaml:"ocr-url"`
 }
 
 func Load(path string) (Config, error) {

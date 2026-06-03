@@ -510,6 +510,16 @@ body {
   gap: 12px;
 }
 
+.trace-query {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trace-query .el-input {
+  width: 260px;
+}
+
 .drawer-header {
   display: flex;
   align-items: center;

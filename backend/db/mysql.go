@@ -19,7 +19,7 @@ func Connect(mysqlConfig config.MySQLConfig) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	if err := conn.AutoMigrate(&models.Drug{}, &models.SpecimenApplication{}, &models.SysUser{}, &models.CasbinRule{}, &models.FileUploadAndDownload{}); err != nil {
+	if err := conn.AutoMigrate(&models.Drug{}, &models.SpecimenApplication{}, &models.SysUser{}, &models.CasbinRule{}, &models.FileUploadAndDownload{}, &models.TraceCode{}); err != nil {
 		return nil, err
 	}
 

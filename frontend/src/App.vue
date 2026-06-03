@@ -105,6 +105,10 @@
             <el-icon><FolderOpened /></el-icon>
             <span>媒体库（上传和下载）</span>
           </el-menu-item>
+          <el-menu-item v-if="canViewMenu('traceCodes')" index="traceCodes">
+            <el-icon><Search /></el-icon>
+            <span>异常追溯码</span>
+          </el-menu-item>
           <el-menu-item v-if="canViewMenu('about')" index="about">
             <el-icon><InfoFilled /></el-icon>
             <span>关于我们</span>
@@ -652,6 +656,118 @@
           </section>
         </template>
 
+        <template v-else-if="activeMenu === 'traceCodes'">
+          <section class="panel action-panel">
+            <div class="media-actions">
+              <el-upload
+                accept=".jpg,.jpeg,.png,.webp"
+                :auto-upload="false"
+                :disabled="traceCodeUploading"
+                :show-file-list="false"
+                :on-change="handleTraceCodeFileSelect"
+              >
+                <el-button type="primary" :loading="traceCodeUploading">
+                  <el-icon><Upload /></el-icon>
+                  <span>上传图片</span>
+                </el-button>
+              </el-upload>
+              <el-button :disabled="traceCodeRows.length === 0" @click="resetTraceCodeRows">
+                <el-icon><Refresh /></el-icon>
+                <span>清空</span>
+              </el-button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="table-toolbar">
+              <h2>识别结果</h2>
+              <el-button type="primary" :loading="traceCodeSaving" :disabled="traceCodeRows.length === 0" @click="confirmTraceCode">
+                确认入库
+              </el-button>
+            </div>
+            <el-table class="media-table" :data="traceCodeRows" header-cell-class-name="media-table-header" border empty-text="暂无识别结果">
+              <el-table-column label="交易流水号" min-width="180">
+                <template #default="{ row }">
+                  <el-input v-model="row.transaction_serial_number" placeholder="交易流水号" />
+                </template>
+              </el-table-column>
+              <el-table-column label="药品编号" min-width="160">
+                <template #default="{ row }">
+                  <el-input v-model="row.drug_code" placeholder="药品编号" />
+                </template>
+              </el-table-column>
+              <el-table-column label="药品名称" min-width="180">
+                <template #default="{ row }">
+                  <el-input v-model="row.drug_name" placeholder="药品名称" />
+                </template>
+              </el-table-column>
+              <el-table-column label="结算日期" min-width="170">
+                <template #default="{ row }">
+                  <el-date-picker
+                    v-model="row.settlement_date"
+                    type="date"
+                    value-format="YYYY-MM-DD"
+                    placeholder="结算日期"
+                    class="full-input"
+                  />
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+
+          <section class="panel">
+            <div class="table-toolbar">
+              <div class="trace-query">
+                <el-input
+                  v-model="traceCodeSearchSerial"
+                  placeholder="交易流水号"
+                  clearable
+                  @keyup.enter="searchTraceCodes"
+                />
+                <el-button type="primary" :loading="traceCodeListLoading" @click="searchTraceCodes">
+                  <el-icon><Search /></el-icon>
+                  <span>查询</span>
+                </el-button>
+                <el-button @click="resetTraceCodeSearch">
+                  <el-icon><Refresh /></el-icon>
+                  <span>重置</span>
+                </el-button>
+              </div>
+              <el-button :loading="traceCodeListLoading" @click="fetchTraceCodes">
+                <el-icon><Refresh /></el-icon>
+                <span>刷新</span>
+              </el-button>
+            </div>
+            <el-table
+              class="media-table"
+              :data="traceCodeList"
+              v-loading="traceCodeListLoading"
+              header-cell-class-name="media-table-header"
+              border
+              empty-text="暂无入库数据"
+            >
+              <el-table-column prop="transaction_serial_number" label="交易流水号" min-width="190" />
+              <el-table-column prop="drug_code" label="药品编号" min-width="220" />
+              <el-table-column prop="drug_name" label="药品名称" min-width="160" />
+              <el-table-column prop="settlement_date" label="结算日期" width="130" />
+              <el-table-column prop="source_file_name" label="图片名称" min-width="220" />
+              <el-table-column prop="created_at" label="导入时间" width="130">
+                <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+              </el-table-column>
+            </el-table>
+            <div class="pagination-bar">
+              <span>当前第 {{ traceCodePage }} 页 / 共 {{ traceCodeTotalPages }} 页</span>
+              <el-pagination
+                layout="prev, pager, next"
+                :current-page="traceCodePage"
+                :page-size="pageSize"
+                :total="traceCodeTotal"
+                @current-change="handleTraceCodePageChange"
+              />
+            </div>
+          </section>
+        </template>
+
         <template v-else-if="activeMenu === 'about'">
           <section class="panel about-panel">
             <img class="about-logo" :src="techLogo" alt="信息管理平台标识" />
@@ -876,6 +992,14 @@ const userSaving = ref(false)
 const mediaLoading = ref(false)
 const mediaUploading = ref(false)
 const mediaListVersion = ref(0)
+const traceCodeRows = ref([])
+const traceCodeUploading = ref(false)
+const traceCodeSaving = ref(false)
+const traceCodeList = ref([])
+const traceCodeListLoading = ref(false)
+const traceCodePage = ref(1)
+const traceCodeTotal = ref(0)
+const traceCodeSearchSerial = ref('')
 const drugDrawerVisible = ref(false)
 const specimenDrawerVisible = ref(false)
 const userDrawerVisible = ref(false)
@@ -887,9 +1011,9 @@ const defaultOpenedMenus = ref([])
 const mascotWatching = computed(() => loginFocused.value || loginForm.username !== '' || loginForm.password !== '')
 
 const roleMenus = {
-  888: ['home', 'drugs', 'specimens', 'files', 'about', 'users'],
-  777: ['home', 'specimens', 'files', 'about'],
-  999: ['home', 'drugs', 'files', 'specimens', 'about']
+  888: ['home', 'drugs', 'specimens', 'files', 'traceCodes', 'about', 'users'],
+  777: ['home', 'specimens', 'files', 'traceCodes', 'about'],
+  999: ['home', 'drugs', 'files', 'traceCodes', 'specimens', 'about']
 }
 
 const pathologyTypes = ['腺癌', '鳞癌', '腺鳞癌', '大细胞神经内分泌癌', '小细胞肺癌', '其他']
@@ -908,6 +1032,9 @@ const pageTitle = computed(() => {
   if (activeMenu.value === 'files') {
     return '媒体库（上传和下载）'
   }
+  if (activeMenu.value === 'traceCodes') {
+    return '异常追溯码'
+  }
   if (activeMenu.value === 'users') {
     return '用户管理'
   }
@@ -925,6 +1052,7 @@ const menuRoutes = {
   drugs: '/drugs',
   specimens: '/specimens',
   files: '/files',
+  traceCodes: '/trace-codes',
   about: '/about',
   users: '/users'
 }
@@ -934,6 +1062,7 @@ const routeMenus = {
   '/drugs': 'drugs',
   '/specimens': 'specimens',
   '/files': 'files',
+  '/trace-codes': 'traceCodes',
   '/about': 'about',
   '/users': 'users'
 }
@@ -964,6 +1093,7 @@ const drugTotalPages = computed(() => getTotalPages(drugs.value.length))
 const specimenTotalPages = computed(() => getTotalPages(specimenApplications.value.length))
 const userTotalPages = computed(() => getTotalPages(users.value.length))
 const mediaTotalPages = computed(() => getTotalPages(mediaFiles.value.length))
+const traceCodeTotalPages = computed(() => getTotalPages(traceCodeTotal.value))
 
 const pagedDrugs = computed(() => paginateRows(drugs.value, drugPage.value))
 const pagedSpecimenApplications = computed(() => paginateRows(specimenApplications.value, specimenPage.value))
@@ -1268,6 +1398,111 @@ const handleMediaFileSelect = async (uploadFile) => {
   }
 }
 
+const fetchTraceCodes = async () => {
+  traceCodeListLoading.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE}/trace_codes/get`, {
+      params: {
+        page: traceCodePage.value,
+        page_size: pageSize,
+        transaction_serial_number: traceCodeSearchSerial.value.trim()
+      }
+    })
+    traceCodeList.value = Array.isArray(data.data?.list) ? data.data.list : []
+    traceCodeTotal.value = Number(data.data?.total || 0)
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '查询异常追溯码列表失败'))
+  } finally {
+    traceCodeListLoading.value = false
+  }
+}
+
+const handleTraceCodePageChange = async (page) => {
+  traceCodePage.value = page
+  await fetchTraceCodes()
+}
+
+const searchTraceCodes = async () => {
+  traceCodePage.value = 1
+  await fetchTraceCodes()
+}
+
+const resetTraceCodeSearch = async () => {
+  traceCodeSearchSerial.value = ''
+  traceCodePage.value = 1
+  await fetchTraceCodes()
+}
+
+const validateTraceCodeFile = (file) => {
+  const fileName = file.name.toLowerCase()
+  const validType = ['.jpg', '.jpeg', '.png', '.webp'].some((suffix) => fileName.endsWith(suffix))
+  if (!validType) {
+    ElMessage.error('仅支持 jpg、jpeg、png、webp 图片')
+    return false
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.error('文件不能超过 10MB')
+    return false
+  }
+  return true
+}
+
+const handleTraceCodeFileSelect = async (uploadFile) => {
+  const file = uploadFile.raw
+  if (!file || traceCodeUploading.value) {
+    return
+  }
+  if (!validateTraceCodeFile(file)) {
+    return
+  }
+
+  traceCodeUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await axios.post(`${API_BASE}/trace_codes/recognize`, formData)
+    traceCodeRows.value = Array.isArray(data.data?.records) ? data.data.records : []
+    if (traceCodeRows.value.length === 0) {
+      ElMessage.warning('未识别到可入库记录')
+      return
+    }
+    ElMessage.success('识别完成，请核对后确认入库')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '识别失败'))
+  } finally {
+    traceCodeUploading.value = false
+  }
+}
+
+const confirmTraceCode = async () => {
+  if (traceCodeRows.value.length === 0) {
+    ElMessage.error('暂无识别结果')
+    return
+  }
+  const incompleteRow = traceCodeRows.value.find((row) => !row.transaction_serial_number || !row.drug_code || !row.drug_name)
+  if (incompleteRow) {
+    ElMessage.error('请完整填写交易流水号、药品编号和药品名称')
+    return
+  }
+
+  traceCodeSaving.value = true
+  try {
+    await axios.post(`${API_BASE}/trace_codes/confirm`, { records: traceCodeRows.value })
+    ElMessage.success('入库成功')
+    traceCodeRows.value = []
+    traceCodePage.value = 1
+    await fetchTraceCodes()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '入库失败'))
+  } finally {
+    traceCodeSaving.value = false
+  }
+}
+
+const resetTraceCodeRows = () => {
+  traceCodeRows.value = []
+}
+
 const downloadMediaFile = async (row) => {
   if (!row.id) {
     ElMessage.error('文件记录不存在')
@@ -1428,6 +1663,9 @@ const fetchActiveMenuData = async () => {
   }
   if (activeMenu.value === 'files') {
     await fetchMediaFiles()
+  }
+  if (activeMenu.value === 'traceCodes') {
+    await fetchTraceCodes()
   }
   if (activeMenu.value === 'users') {
     await fetchUsers()
@@ -1634,6 +1872,17 @@ const formatTime = (value) => {
     return '-'
   }
   return new Date(value).toLocaleString()
+}
+
+const formatDate = (value) => {
+  if (!value) {
+    return '-'
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '-'
+  }
+  return date.toISOString().slice(0, 10)
 }
 
 const handlePopState = () => {
