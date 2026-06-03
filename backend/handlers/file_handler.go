@@ -30,6 +30,12 @@ var allowedUploadTypes = map[string]struct {
 	".png":  {FileType: "image", ContentType: "image/png"},
 	".svg":  {FileType: "image", ContentType: "image/svg+xml"},
 	".mp4":  {FileType: "video", ContentType: "video/mp4"},
+	".txt":  {FileType: "text", ContentType: "text/plain"},
+	".sql":  {FileType: "text", ContentType: "text/plain"},
+	".xls":  {FileType: "text", ContentType: "application/vnd.ms-excel"},
+	".xlsx": {FileType: "text", ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+	".doc":  {FileType: "text", ContentType: "application/msword"},
+	".docx": {FileType: "text", ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
 }
 
 type FileHandler struct {
@@ -63,7 +69,7 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	ext := strings.ToLower(filepath.Ext(fileName))
 	uploadType, ok := allowedUploadTypes[ext]
 	if !ok {
-		badRequest(c, "仅支持 jpg、png、svg 图片和 mp4 视频", nil)
+		badRequest(c, "仅支持 jpg、png、svg 图片，mp4 视频，以及 txt、sql、xls、xlsx、doc、docx 文本文件", nil)
 		return
 	}
 

@@ -582,18 +582,24 @@
 
         <template v-else-if="activeMenu === 'files'">
           <section class="panel action-panel">
-            <el-upload
-              accept=".jpg,.jpeg,.png,.svg,.mp4"
-              :auto-upload="false"
-              :disabled="mediaUploading"
-              :show-file-list="false"
-              :on-change="handleMediaFileSelect"
-            >
-              <el-button type="primary" :loading="mediaUploading">
-                <el-icon><Upload /></el-icon>
-                <span>上传文件</span>
+            <div class="media-actions">
+              <el-upload
+                accept=".jpg,.jpeg,.png,.svg,.mp4,.txt,.sql,.xls,.xlsx,.doc,.docx"
+                :auto-upload="false"
+                :disabled="mediaUploading"
+                :show-file-list="false"
+                :on-change="handleMediaFileSelect"
+              >
+                <el-button type="primary" :loading="mediaUploading">
+                  <el-icon><Upload /></el-icon>
+                  <span>上传文件</span>
+                </el-button>
+              </el-upload>
+              <el-button :loading="mediaLoading" @click="fetchMediaFiles">
+                <el-icon><Refresh /></el-icon>
+                <span>刷新</span>
               </el-button>
-            </el-upload>
+            </div>
           </section>
 
           <section class="panel">
@@ -611,8 +617,8 @@
               <el-table-column prop="displayName" label="文件名称" min-width="260" />
               <el-table-column prop="fileType" label="类型" width="130">
                 <template #default="{ row }">
-                  <el-tag :type="row.fileType === 'video' ? 'warning' : 'success'">
-                    {{ row.fileType === 'video' ? '视频' : '图片' }}
+                  <el-tag :type="getMediaTypeTagType(row.fileType)">
+                    {{ getMediaTypeLabel(row.fileType) }}
                   </el-tag>
                 </template>
               </el-table-column>
@@ -1224,13 +1230,15 @@ const fetchMediaFiles = async () => {
 
 const validateMediaFile = (file) => {
   const fileName = file.name.toLowerCase()
-  const validType = ['.jpg', '.jpeg', '.png', '.svg', '.mp4'].some((suffix) => fileName.endsWith(suffix))
+  const validType = ['.jpg', '.jpeg', '.png', '.svg', '.mp4', '.txt', '.sql', '.xls', '.xlsx', '.doc', '.docx'].some((suffix) =>
+    fileName.endsWith(suffix)
+  )
   if (!validType) {
-    ElMessage.error('仅支持 jpg、png、svg 图片和 mp4 视频')
+    ElMessage.error('仅支持 jpg、png、svg、mp4、txt、sql、xls、xlsx、doc、docx 格式文件')
     return false
   }
   if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error('图片和视频不能超过 5MB')
+    ElMessage.error('文件不能超过 5MB')
     return false
   }
   return true
@@ -1601,6 +1609,24 @@ const getMediaExtension = (row) => {
   const contentType = row?.contentType || ''
   const typeMatched = contentType.match(/\/([a-z0-9.+-]+)$/i)
   return typeMatched?.[1]?.toLowerCase() || '-'
+}
+
+const getMediaTypeLabel = (fileType) => {
+  const labels = {
+    image: '图片',
+    video: '视频',
+    text: '文本'
+  }
+  return labels[fileType] || '其他'
+}
+
+const getMediaTypeTagType = (fileType) => {
+  const types = {
+    image: 'success',
+    video: 'warning',
+    text: 'primary'
+  }
+  return types[fileType] || 'info'
 }
 
 const formatTime = (value) => {

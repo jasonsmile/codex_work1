@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 
+	"drug-info/backend/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,6 +28,22 @@ func fail(c *gin.Context, status int, code int, message string, err error) {
 	errorMessage := message
 	if err != nil {
 		errorMessage = err.Error()
+	}
+
+	fields := []logger.Field{
+		{Key: "request_id", Value: logger.RequestID(c)},
+		{Key: "method", Value: c.Request.Method},
+		{Key: "path", Value: c.Request.URL.Path},
+		{Key: "status", Value: status},
+		{Key: "code", Value: code},
+		{Key: "message", Value: message},
+		{Key: "error_message", Value: errorMessage},
+		{Key: "client_ip", Value: c.ClientIP()},
+	}
+	if status >= http.StatusInternalServerError {
+		logger.Error("api error", fields...)
+	} else {
+		logger.Warning("api warning", fields...)
 	}
 
 	c.JSON(status, gin.H{

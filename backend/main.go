@@ -7,28 +7,39 @@ import (
 	"drug-info/backend/config"
 	"drug-info/backend/db"
 	"drug-info/backend/handlers"
+	"drug-info/backend/logger"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	if err := logger.Init("log"); err != nil {
+		log.Fatalf("init logger failed: %v", err)
+	}
+	defer logger.Close()
+
 	database, err := db.Connect()
 	if err != nil {
+		logger.Error("connect database failed", logger.Field{Key: "error", Value: err})
 		log.Fatalf("connect database failed: %v", err)
 	}
 
 	enforcer, err := db.NewRBACEnforcer(database)
 	if err != nil {
+		logger.Error("init casbin failed", logger.Field{Key: "error", Value: err})
 		log.Fatalf("init casbin failed: %v", err)
 	}
 
 	appConfig, err := config.Load("config.yaml")
 	if err != nil {
+		logger.Error("load config failed", logger.Field{Key: "error", Value: err})
 		log.Fatalf("load config failed: %v", err)
 	}
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(logger.RecoveryMiddleware())
+	router.Use(logger.AccessMiddleware())
 	router.Use(cors.New(cors.Config{
 		AllowAllOrigins: true,
 		AllowMethods:    []string{"GET", "POST", "OPTIONS"},
@@ -70,7 +81,9 @@ func main() {
 		port = "8888"
 	}
 
+	logger.Access("server starting", logger.Field{Key: "port", Value: port})
 	if err := router.Run(":" + port); err != nil {
+		logger.Error("start server failed", logger.Field{Key: "error", Value: err})
 		log.Fatalf("start server failed: %v", err)
 	}
 }
