@@ -19,7 +19,13 @@ func main() {
 	}
 	defer logger.Close()
 
-	database, err := db.Connect()
+	appConfig, err := config.Load("config.yaml")
+	if err != nil {
+		logger.Error("load config failed", logger.Field{Key: "error", Value: err})
+		log.Fatalf("load config failed: %v", err)
+	}
+
+	database, err := db.Connect(appConfig.MySQL)
 	if err != nil {
 		logger.Error("connect database failed", logger.Field{Key: "error", Value: err})
 		log.Fatalf("connect database failed: %v", err)
@@ -29,12 +35,6 @@ func main() {
 	if err != nil {
 		logger.Error("init casbin failed", logger.Field{Key: "error", Value: err})
 		log.Fatalf("init casbin failed: %v", err)
-	}
-
-	appConfig, err := config.Load("config.yaml")
-	if err != nil {
-		logger.Error("load config failed", logger.Field{Key: "error", Value: err})
-		log.Fatalf("load config failed: %v", err)
 	}
 
 	router := gin.New()

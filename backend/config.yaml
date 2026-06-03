@@ -1,3 +1,13 @@
+mysql:
+  host: '127.0.0.1'
+  port: '3306'
+  username: 'root'
+  password: 'root'
+  database: 'medical_info'
+  charset: 'utf8mb4'
+  parse-time: true
+  loc: 'Local'
+
 qiniu-kodo:
   path: 'codex_file'
   bucket: 'myfiledb'

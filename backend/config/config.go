@@ -8,6 +8,19 @@ import (
 
 type Config struct {
 	QiniuKodo QiniuKodoConfig `yaml:"qiniu-kodo"`
+	MySQL     MySQLConfig     `yaml:"mysql"`
+}
+
+type MySQLConfig struct {
+	DSN       string `yaml:"dsn"`
+	Host      string `yaml:"host"`
+	Port      string `yaml:"port"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
+	Database  string `yaml:"database"`
+	Charset   string `yaml:"charset"`
+	ParseTime bool   `yaml:"parse-time"`
+	Loc       string `yaml:"loc"`
 }
 
 type QiniuKodoConfig struct {
