@@ -49,6 +49,37 @@ func TestParseTraceCodeWordsByColumns(t *testing.T) {
 	}
 }
 
+func TestParseTraceCodeWordsByColumnsWithSkewedSingleRow(t *testing.T) {
+	words := []baiduOCRWord{
+		word("transaction_serial_number", 424, 130),
+		word("drug_code", 421, 355),
+		word("drug_name", 420, 580),
+		word("settlement_date", 419, 990),
+		word("visit_id", 418, 1650),
+		word("0111000520001127410Y", 461, 66),
+		word("XL02BGA045A001010204641", 445, 354),
+		word("drug_name_text", 444, 580),
+		word("2.0000", 443, 742),
+		word("2.0000", 442, 850),
+		word("2026-05-2713:34:13", 441, 986),
+		word("20260527133330579210", 439, 1642),
+	}
+
+	records := parseTraceCodeWords(words)
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d: %#v", len(records), records)
+	}
+	if records[0].TransactionSerialNumber != "0111000520001127410Y" {
+		t.Fatalf("unexpected serial: %s", records[0].TransactionSerialNumber)
+	}
+	if records[0].DrugCode != "XL02BGA045A001010204641" {
+		t.Fatalf("unexpected drug code: %s", records[0].DrugCode)
+	}
+	if records[0].SettlementDate != "2026-05-27" {
+		t.Fatalf("unexpected settlement date: %s", records[0].SettlementDate)
+	}
+}
+
 func word(text string, top int, left int) baiduOCRWord {
 	return baiduOCRWord{
 		Words: text,

@@ -754,6 +754,11 @@
               <el-table-column prop="created_at" label="导入时间" width="130">
                 <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
               </el-table-column>
+              <el-table-column label="操作" width="100" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="danger" link @click="deleteTraceCode(row)">删除</el-button>
+                </template>
+              </el-table-column>
             </el-table>
             <div class="pagination-bar">
               <span>当前第 {{ traceCodePage }} 页 / 共 {{ traceCodeTotalPages }} 页</span>
@@ -1431,6 +1436,27 @@ const resetTraceCodeSearch = async () => {
   traceCodeSearchSerial.value = ''
   traceCodePage.value = 1
   await fetchTraceCodes()
+}
+
+const deleteTraceCode = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确认删除交易流水号 ${row.transaction_serial_number} 吗？`, '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await axios.post(`${API_BASE}/trace_codes/delete`, { id: row.id })
+    ElMessage.success('删除成功')
+    if (traceCodeList.value.length === 1 && traceCodePage.value > 1) {
+      traceCodePage.value -= 1
+    }
+    await fetchTraceCodes()
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return
+    }
+    ElMessage.error(getErrorMessage(error, '删除失败'))
+  }
 }
 
 const validateTraceCodeFile = (file) => {

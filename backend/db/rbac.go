@@ -28,6 +28,7 @@ var defaultCasbinRules = []models.CasbinRule{
 	{PType: "p", V0: "admin", V1: "/api/trace_codes/recognize", V2: "POST"},
 	{PType: "p", V0: "admin", V1: "/api/trace_codes/confirm", V2: "POST"},
 	{PType: "p", V0: "admin", V1: "/api/trace_codes/get", V2: "GET"},
+	{PType: "p", V0: "admin", V1: "/api/trace_codes/delete", V2: "POST"},
 	{PType: "p", V0: "admin", V1: "/api/users/add", V2: "POST"},
 	{PType: "p", V0: "admin", V1: "/api/users/get", V2: "GET"},
 	{PType: "p", V0: "admin", V1: "/api/users/delete", V2: "POST"},
@@ -46,6 +47,7 @@ var defaultCasbinRules = []models.CasbinRule{
 	{PType: "p", V0: "specimen_manager", V1: "/api/trace_codes/recognize", V2: "POST"},
 	{PType: "p", V0: "specimen_manager", V1: "/api/trace_codes/confirm", V2: "POST"},
 	{PType: "p", V0: "specimen_manager", V1: "/api/trace_codes/get", V2: "GET"},
+	{PType: "p", V0: "specimen_manager", V1: "/api/trace_codes/delete", V2: "POST"},
 
 	{PType: "p", V0: "viewer", V1: "/api/drugs/get", V2: "GET"},
 	{PType: "p", V0: "viewer", V1: "/api/specimens/get", V2: "GET"},
@@ -58,6 +60,7 @@ var defaultCasbinRules = []models.CasbinRule{
 	{PType: "p", V0: "viewer", V1: "/api/trace_codes/recognize", V2: "POST"},
 	{PType: "p", V0: "viewer", V1: "/api/trace_codes/confirm", V2: "POST"},
 	{PType: "p", V0: "viewer", V1: "/api/trace_codes/get", V2: "GET"},
+	{PType: "p", V0: "viewer", V1: "/api/trace_codes/delete", V2: "POST"},
 }
 
 func NewRBACEnforcer(database *gorm.DB) (*casbin.Enforcer, error) {

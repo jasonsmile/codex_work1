@@ -144,13 +144,21 @@ func (w *rotatingWriter) Write(p []byte) (int, error) {
 			return 0, err
 		}
 	}
-	return w.file.Write(p)
+	n, err := w.file.Write(p)
+	if err != nil {
+		return n, err
+	}
+	if syncErr := w.file.Sync(); syncErr != nil {
+		return n, syncErr
+	}
+	return n, nil
 }
 
 func (w *rotatingWriter) close() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.file != nil {
+		_ = w.file.Sync()
 		_ = w.file.Close()
 		w.file = nil
 	}

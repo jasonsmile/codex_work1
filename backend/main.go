@@ -74,6 +74,7 @@ func main() {
 			protected.POST("/trace_codes/recognize", traceCodeHandler.Recognize)
 			protected.POST("/trace_codes/confirm", traceCodeHandler.Confirm)
 			protected.GET("/trace_codes/get", traceCodeHandler.List)
+			protected.POST("/trace_codes/delete", traceCodeHandler.Delete)
 			protected.POST("/users/add", userHandler.CreateUser)
 			protected.GET("/users/get", userHandler.ListUsers)
 			protected.POST("/users/delete", userHandler.DeleteUser)

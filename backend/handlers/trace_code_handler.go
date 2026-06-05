@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"drug-info/backend/config"
+	"drug-info/backend/logger"
 	"drug-info/backend/models"
 
 	"github.com/gin-gonic/gin"
@@ -64,6 +65,10 @@ type traceCodeRecord struct {
 
 type traceCodeConfirmRequest struct {
 	Records []traceCodeRecord `json:"records"`
+}
+
+type traceCodeDeleteRequest struct {
+	ID uint `json:"id"`
 }
 
 type traceCodeListResponse struct {
@@ -149,6 +154,17 @@ func (h *TraceCodeHandler) Recognize(c *gin.Context) {
 		result.Records[index].SourceFileName = fileName
 		result.Records[index].ContentType = contentType
 	}
+	if len(result.Records) == 0 {
+		logger.Warning("trace code recognize no records",
+			logger.Field{Key: "request_id", Value: logger.RequestID(c)},
+			logger.Field{Key: "file_name", Value: fileName},
+			logger.Field{Key: "file_size", Value: fileHeader.Size},
+			logger.Field{Key: "content_type", Value: contentType},
+			logger.Field{Key: "client_ip", Value: c.ClientIP()},
+		)
+		badRequest(c, "未识别到可入库记录", nil)
+		return
+	}
 
 	success(c, http.StatusOK, "识别成功", result)
 }
@@ -214,6 +230,30 @@ func (h *TraceCodeHandler) List(c *gin.Context) {
 		Page:     page,
 		PageSize: pageSize,
 	})
+}
+
+func (h *TraceCodeHandler) Delete(c *gin.Context) {
+	var request traceCodeDeleteRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		badRequest(c, "请求参数不正确", err)
+		return
+	}
+	if request.ID == 0 {
+		badRequest(c, "记录ID不能为空", nil)
+		return
+	}
+
+	result := h.db.Delete(&models.TraceCode{}, request.ID)
+	if result.Error != nil {
+		serverError(c, "删除异常追溯码失败", result.Error)
+		return
+	}
+	if result.RowsAffected == 0 {
+		badRequest(c, "记录不存在", nil)
+		return
+	}
+
+	success(c, http.StatusOK, "删除成功", nil)
 }
 
 func (h *TraceCodeHandler) recognizeTraceCode(ctx context.Context, imageBytes []byte) (traceCodeRecognizeResponse, error) {
@@ -402,10 +442,16 @@ func parseTraceCodeWordsByColumns(words []baiduOCRWord) []traceCodeRecord {
 
 	records := make([]traceCodeRecord, 0, len(rowAnchors))
 	for index, anchor := range rowAnchors {
-		rowTop := anchor.Location.Top - 2
-		rowBottom := anchor.Location.Top + 22
+		rowTop := anchor.Location.Top - 35
+		rowBottom := anchor.Location.Top + 35
+		if index > 0 && rowTop <= rowAnchors[index-1].Location.Top {
+			rowTop = rowAnchors[index-1].Location.Top + 2
+		}
 		if index+1 < len(rowAnchors) {
-			rowBottom = rowAnchors[index+1].Location.Top - 2
+			nextTop := rowAnchors[index+1].Location.Top - 2
+			if rowBottom > nextTop {
+				rowBottom = nextTop
+			}
 		}
 
 		rowItems := make([]baiduOCRWord, 0)
@@ -420,9 +466,9 @@ func parseTraceCodeWordsByColumns(words []baiduOCRWord) []traceCodeRecord {
 
 		record := traceCodeRecord{
 			TransactionSerialNumber: cleanTraceCodeCell(anchor.Words),
-			DrugCode:                firstCellInRange(rowItems, 220, 430),
-			DrugName:                firstCellInRange(rowItems, 430, 660),
-			SettlementDate:          normalizeDate(firstCellInRange(rowItems, 850, 1040)),
+			DrugCode:                firstCellInRange(rowItems, 220, 430, anchor.Location.Top),
+			DrugName:                firstCellInRange(rowItems, 430, 660, anchor.Location.Top),
+			SettlementDate:          normalizeDate(firstCellInRange(rowItems, 880, 1120, anchor.Location.Top)),
 		}
 		if record.DrugCode == "" || record.DrugName == "" {
 			continue
@@ -432,11 +478,34 @@ func parseTraceCodeWordsByColumns(words []baiduOCRWord) []traceCodeRecord {
 	return records
 }
 
-func firstCellInRange(items []baiduOCRWord, leftMin int, leftMax int) string {
+func firstCellInRange(items []baiduOCRWord, leftMin int, leftMax int, targetTop int) string {
+	var best *baiduOCRWord
+	bestDistance := 0
+	preferredItems := make([]baiduOCRWord, 0)
 	for _, item := range items {
 		if item.Location.Left >= leftMin && item.Location.Left < leftMax {
-			return cleanTraceCodeCell(item.Words)
+			if item.Location.Top >= targetTop-2 {
+				preferredItems = append(preferredItems, item)
+			}
 		}
+	}
+	searchItems := preferredItems
+	if len(searchItems) == 0 {
+		searchItems = items
+	}
+	for _, item := range searchItems {
+		if item.Location.Left < leftMin || item.Location.Left >= leftMax {
+			continue
+		}
+		distance := absInt(item.Location.Top - targetTop)
+		if best == nil || distance < bestDistance {
+			current := item
+			best = &current
+			bestDistance = distance
+		}
+	}
+	if best != nil {
+		return cleanTraceCodeCell(best.Words)
 	}
 	return ""
 }
